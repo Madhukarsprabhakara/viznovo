@@ -1,0 +1,70 @@
+networks:
+  irep:
+    name: irep
+services:
+  irep_db:
+    image: postgres:14.12
+    container_name: irep_db
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+    ports:
+      - 5433:5432
+    environment:
+      - POSTGRES_DB=irep
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1RJN0N2Kk47GvqRqo1Ezx3Vt
+    networks:
+      - irep
+  irep_nginx:
+    build:
+      context: .
+      dockerfile: nginx-dev.dockerfile
+    container_name: irep_nginx
+    networks:
+      - irep
+    ports:
+      - 80:80
+    volumes:
+      - ./src/public:/var/www/html/public
+  irep_php:
+    build:
+      context: .
+      dockerfile: php-dev.dockerfile
+    container_name: irep_php
+    volumes:
+      - ./src:/var/www/html
+    networks:
+      - irep
+  irep_composer:
+    image: composer:latest
+    container_name: irep_composer
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    networks:
+      - irep
+  irep_artisan:
+    build:
+      context: .
+      dockerfile: php-dev.dockerfile
+    container_name: irep_artisan
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ["php", "artisan"]
+    networks:
+      - irep
+  irep_npm:
+    build:
+      context: .
+      dockerfile: node-dev.dockerfile
+    container_name: irep_npm
+    ports:
+      - 5173:5173
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ["npm"]
+    command: ["run", "dev", "--", "--host", "0.0.0.0"]
+    networks:
+      - irep
