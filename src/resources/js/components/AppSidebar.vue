@@ -16,7 +16,7 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Danad',
+        title: 'Designer Reports',
         href: '/danad',
         icon: ChartNoAxesCombined,
     },
