@@ -29,10 +29,10 @@ const breadcrumbs: BreadcrumbItem[] = [
                         </span>
                     </div>
                     <!-- Report 1 content -->
-                     <Report1 />
+                    
                     <div>
                         <!-- Place your HTML report here -->
-                        <p>Report 1 goes here.</p>
+                        <Report1 />
                     </div>
                 </div>
                 <!-- Report 2 -->

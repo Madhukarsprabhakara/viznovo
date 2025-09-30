@@ -40,5 +40,9 @@ return [
     'llama' => [
         'key' => env('LLAMA_API_KEY'),
     ],
-
+    'bedrock' => [
+        'key' => env('BEDROCK_KEY'),
+        'secret' => env('BEDROCK_SECRET'),
+        'region' => env('BEDROCK_REGION', 'us-west-2'),
+    ],
 ];

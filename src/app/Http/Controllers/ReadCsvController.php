@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use League\Csv\Reader;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use App\Services\AIService;
 class ReadCsvController extends Controller
 {
     public $standardHeader ='Here is the data collected on a survey in the form of JSON object. \n\n. '; 
@@ -199,8 +200,9 @@ Use heroicons svgs for icons.';
 
         
     }
-    public function getllama()
+    public function getllama(AIService $aiService)
     {
+        return $aiService->invokeAWSLlama3_70b($this->getPrompt());
         $response = Http::timeout(1200)->withHeaders([
             'Content-Type' => 'application/json',
             'Authorization' => 'Bearer ' . config('services.llama.key'),
