@@ -33,6 +33,7 @@ services:
     container_name: irep_php
     volumes:
       - ./src:/var/www/html
+      - ./php/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini
     networks:
       - irep
   irep_composer:

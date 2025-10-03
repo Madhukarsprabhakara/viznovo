@@ -7,6 +7,10 @@ use App\Http\Controllers\ReadCsvController;
 ini_set('max_execution_time', 1200);
 
 Route::get('/', function () {
+
+     if (auth()->check()) {
+        return redirect()->route('projects.index');
+    }
     return Inertia::render('Welcome');
 })->name('home');
 
@@ -26,6 +30,19 @@ Route::get('llamacsv', [ReadCsvController::class, 'getllama'])
     ->middleware(['auth', 'verified'])
     ->name('llamacsv');
 
-    
+Route::get('/projects', [App\Http\Controllers\ProjectController::class, 'index'])
+    ->middleware(['auth', 'verified'])->name('projects.index');
+Route::get('/projects/create', [App\Http\Controllers\ProjectController::class, 'create'])
+    ->middleware(['auth', 'verified'])->name('projects.create');
+
+Route::post('/projects', [App\Http\Controllers\ProjectController::class, 'store'])
+    ->middleware(['auth', 'verified'])->name('projects.store');
+
+Route::get('/projects/{project}', [App\Http\Controllers\ProjectController::class, 'show'])
+    ->middleware(['auth', 'verified'])->name('projects.show');
+
+Route::post('/projects/{project}/upload', [App\Http\Controllers\ProjectController::class, 'upload'])
+    ->middleware(['auth', 'verified'])->name('projects.upload');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

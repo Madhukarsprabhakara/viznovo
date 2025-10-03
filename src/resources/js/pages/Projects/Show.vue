@@ -3,16 +3,19 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import PlaceholderPattern from '../components/PlaceholderPattern.vue';
-import { ref, onMounted } from 'vue';
+import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
+import { ref, onMounted, defineProps } from 'vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
+import UploadFile from './Partials/UploadFile.vue';
+const props = defineProps({ project: Object })
 
-const breadcrumbs: BreadcrumbItem[] = [
+
+const breadcrumbs = ref<BreadcrumbItem[]>([
     {
-        title: 'Dashboard',
-        href: dashboard().url,
+        title: 'Projects',
+        href: '/projects',
     },
-];
+]);
 
 const cardCollapsed = ref(false);
 
@@ -23,9 +26,16 @@ function toggleCard() {
     localStorage.setItem(LOCAL_KEY, cardCollapsed.value ? '1' : '0');
 }
 
+
 onMounted(() => {
     const stored = localStorage.getItem(LOCAL_KEY);
     cardCollapsed.value = stored === '1' ? true : false;
+
+    breadcrumbs.value.push({
+        title: props.project.name,
+        href: '/projects/' + props.project.id, // Use Ziggy route helper if available
+    });
+
 });
 
 </script>
@@ -42,7 +52,7 @@ onMounted(() => {
                     :class="cardCollapsed ? 'h-20 overflow-hidden' : ''">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="font-semibold text-lg">File Uploads</div>
+                            <div class="font-semibold text-lg">{{ project.name }} -- File Uploads</div>
                             <div class="text-xs text-gray-400 mt-1">Supported formats: CSV, and PDF only.</div>
                         </div>
 
@@ -55,19 +65,20 @@ onMounted(() => {
                     </div>
                     <div v-if="!cardCollapsed" class="mt-3">
                         <!-- Card content goes here -->
-                        <p class="text-gray-600 dark:text-gray-300">This is the collapsible card content. Add your
-                            settings, filters, or info here.</p>
+                        <UploadFile :project_id="project.id"/>
                     </div>
                 </div>
             </div>
             <div class="grid auto-rows-min min-h-screen gap-4 md:grid-cols-2">
-                <div class="relative aspect-video  overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                <div
+                    class="relative aspect-video  overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     <PlaceholderPattern />
                 </div>
-                <div class="relative aspect-video  overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+                <div
+                    class="relative aspect-video  overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
                     <PlaceholderPattern />
                 </div>
-                
+
             </div>
 
         </div>

@@ -6,6 +6,8 @@ pgadmin-data/*
 /src/public/hot
 /src/public/storage
 /src/storage/*.key
+/src/storage/app/private/*
+
 /src/vendor
 /src/.env
 /src/.env.backup
