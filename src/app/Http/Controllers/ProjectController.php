@@ -90,7 +90,6 @@ class ProjectController extends Controller
     {
 
         try {
-            sleep(5);
             $request->validate([
                 'files' => 'required|array',
                 'files.*' => 'file|mimes:csv,pdf,txt|max:204800', // max 200MB per file
