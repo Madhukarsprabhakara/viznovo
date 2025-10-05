@@ -29,9 +29,18 @@ class ReportController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request, Project $project)
     {
         //
+        try {
+            // sleep(10); // Simulate a delay for processing
+            return $project;
+        }
+        catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

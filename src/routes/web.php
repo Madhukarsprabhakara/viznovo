@@ -49,6 +49,8 @@ Route::delete('/projectdata/{projectData}', [App\Http\Controllers\ProjectDataCon
     
 Route::get('/projects/{project}/reports', [App\Http\Controllers\ReportController::class, 'index'])
     ->middleware(['auth', 'verified'])->name('projects.reports.index');
+Route::post('/projects/{project}/greports', [App\Http\Controllers\ReportController::class, 'create'])
+    ->middleware(['auth', 'verified'])->name('projects.reports.create');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
