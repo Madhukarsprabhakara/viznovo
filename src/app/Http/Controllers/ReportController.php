@@ -2,17 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ProjectData;
+use App\Models\Report;
 use Illuminate\Http\Request;
-
-class ProjectDataController extends Controller
+use Inertia\Inertia;
+use App\Models\Project;
+class ReportController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Project $project)
     {
         //
+        try {
+           
+            return Inertia::render('Reports/Show', [
+                'project' => $project,
+                'reports' => $project->reports,
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to load project: ' . $e->getMessage()])->withInput();
+        }
+        
     }
 
     /**
@@ -34,7 +45,7 @@ class ProjectDataController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ProjectData $projectData)
+    public function show(Report $report)
     {
         //
     }
@@ -42,7 +53,7 @@ class ProjectDataController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(ProjectData $projectData)
+    public function edit(Report $report)
     {
         //
     }
@@ -50,7 +61,7 @@ class ProjectDataController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, ProjectData $projectData)
+    public function update(Request $request, Report $report)
     {
         //
     }
@@ -58,19 +69,8 @@ class ProjectDataController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(ProjectData $projectData)
+    public function destroy(Report $report)
     {
         //
-        try {
-            // Delete the file from storage if it exists
-           
-            if ($projectData->url && \Storage::exists($projectData->url)) {
-                \Storage::delete($projectData->url);
-            }
-            $projectData->delete();
-            return back(303);
-        } catch (\Exception $e) {
-            return $e->getMessage();
-        }
     }
 }

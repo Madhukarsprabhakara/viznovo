@@ -56,6 +56,7 @@ class ProjectController extends Controller
         try {
             return Inertia::render('Projects/Show', [
                 'project' => $project,
+                'files' => $project->files, // assuming $project->files returns the list
             ]);
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to load project: ' . $e->getMessage()])->withInput();

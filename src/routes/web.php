@@ -44,5 +44,11 @@ Route::get('/projects/{project}', [App\Http\Controllers\ProjectController::class
 Route::post('/projects/{project}/upload', [App\Http\Controllers\ProjectController::class, 'upload'])
     ->middleware(['auth', 'verified'])->name('projects.upload');
 
+Route::delete('/projectdata/{projectData}', [App\Http\Controllers\ProjectDataController::class, 'destroy'])
+    ->middleware(['auth', 'verified'])->name('projectdata.destroy');  
+    
+Route::get('/projects/{project}/reports', [App\Http\Controllers\ReportController::class, 'index'])
+    ->middleware(['auth', 'verified'])->name('projects.reports.index');
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
