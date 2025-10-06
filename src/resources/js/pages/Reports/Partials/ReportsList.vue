@@ -2,29 +2,29 @@
   <div class="flex flex-col mt-6 items-center">
     <ul role="list" class="space-y-6 w-full">
       <li
-        v-for="client in clients"
-        :key="client.id"
-        class="overflow-hidden rounded-xl outline outline-1 outline-gray-200 mx-auto w-3/4"
+        v-for="report in $page.props.reports"
+        :key="report.id"
+        class=" rounded-xl outline outline-1 outline-gray-200 mx-auto w-3/4"
       >
         <!-- ...rest of your card code... -->
         <div class="flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
-          
-          <div class="text-sm/6 font-medium text-gray-900">{{ client.name }}</div>
+
+          <div class="text-sm/6 font-medium text-gray-900">{{ report.title }}</div>
           <div class="relative ml-auto">
             <button
               class="relative block text-gray-400 hover:text-gray-500 focus:outline-none"
-              @click="toggleDropdown(client.id)"
+              @click="toggleDropdown(report.id)"
             >
               <span class="absolute -inset-2.5" />
               <span class="sr-only">Open options</span>
               <MoreVertical class="size-5" aria-hidden="true" />
             </button>
             <div
-              v-if="openDropdown === client.id"
+              v-if="openDropdown === report.id"
               class="absolute right-0 z-10 mt-0.5 w-32 origin-top-right rounded-md bg-white py-2 shadow-lg outline outline-1 outline-gray-900/5"
             >
-              <a href="#" class="block px-3 py-1 text-sm/6 text-gray-900 hover:bg-gray-50">View<span class="sr-only">, {{ client.name }}</span></a>
-              <a href="#" class="block px-3 py-1 text-sm/6 text-gray-900 hover:bg-gray-50">Edit<span class="sr-only">, {{ client.name }}</span></a>
+              <a href="#" class="block px-3 py-1 text-sm/6 text-gray-900 hover:bg-gray-50">View<span class="sr-only">, {{ report.title }}</span></a>
+              <a href="#" class="block px-3 py-1 text-sm/6 text-gray-900 hover:bg-gray-50">Edit<span class="sr-only">, {{ report.title }}</span></a>
             </div>
           </div>
         </div>

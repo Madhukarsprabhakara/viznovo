@@ -51,6 +51,16 @@ Route::get('/projects/{project}/reports', [App\Http\Controllers\ReportController
     ->middleware(['auth', 'verified'])->name('projects.reports.index');
 Route::post('/projects/{project}/greports', [App\Http\Controllers\ReportController::class, 'create'])
     ->middleware(['auth', 'verified'])->name('projects.reports.create');
+Route::post('/projects/{project}/sreports', [App\Http\Controllers\ReportController::class, 'store'])
+    ->middleware(['auth', 'verified'])->name('projects.reports.store');
+
+Route::get('/reports/{uuid}', [App\Http\Controllers\ReportController::class, 'show'])->name('reports.show');
+Route::get('/reports/{report}/edit', [App\Http\Controllers\ReportController::class, 'edit'])
+    ->middleware(['auth', 'verified'])->name('reports.edit');
+Route::put('/reports/{report}', [App\Http\Controllers\ReportController::class, 'update'])
+    ->middleware(['auth', 'verified'])->name('reports.update');
+Route::delete('/reports/{report}', [App\Http\Controllers\ReportController::class, 'destroy'])
+    ->middleware(['auth', 'verified'])->name('reports.destroy');
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

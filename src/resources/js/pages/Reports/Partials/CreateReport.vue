@@ -1,10 +1,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { usePage, useForm } from '@inertiajs/vue3'
 import axios from 'axios'
+
+
+
 
 const page = usePage()
 const projectId = page.props.project.id
+
+const saveGeneratedReport = useForm({
+  project_id: projectId,
+  prompt: '',
+  result: ''
+})
 
 const LOCAL_PROMPT_KEY = (projectId) => `reportPrompt_${projectId}`
 
@@ -33,7 +42,8 @@ async function testRun() {
             prompt: prompt.value
         })
         // Example: update reportHtml with response data
-        reportHtml.value = `<h1>Report Preview</h1><p class="title">Your prompt:</p>`
+        console.log(response.data.data)
+        reportHtml.value = response.data.data
         // If your API returns HTML: reportHtml.value = response.data.html
     } catch (error) {
         // handle error
@@ -43,7 +53,13 @@ async function testRun() {
 }
 
 function saveReport() {
-    alert('Report saved!')
+  saveGeneratedReport.prompt = prompt.value
+  saveGeneratedReport.result = reportHtml.value
+  saveGeneratedReport.post(`/projects/${projectId}/sreports`, {
+    onSuccess: () => {
+      // Optionally show a success message or reset form
+    }
+  })
 }
 </script>
 
