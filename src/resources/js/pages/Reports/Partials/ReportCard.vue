@@ -11,13 +11,14 @@
       </div>
       <div class="flex shrink-0 self-center gap-2">
         <!-- Copy to Clipboard Badge Button -->
-         
-        <span
-          class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-          <ExternalLink class="mr-1 size-4" aria-hidden="true" />
 
-          {{ `/reports/${report.id}` }}
-        </span>
+        <a :href="`/reports/${report.uuid}`" target="_blank">
+          <span
+            class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+            <ExternalLink class="mr-1 size-4" aria-hidden="true" />
+            {{ `/reports/${report.uuid}` }}
+          </span>
+        </a>
         <Menu as="div" class="relative inline-block text-left">
           <MenuButton
             class="relative flex items-center rounded-full text-gray-400 outline-offset-[6px] hover:text-gray-600">
@@ -35,18 +36,18 @@
                 <MenuItem v-slot="{ active }">
                 <Link :href="`/reports/${report.id}/edit`"
                   :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'flex px-4 py-2 text-sm']">
-                  <Edit class="mr-3 size-5 text-gray-400" aria-hidden="true" />
-                  <span>Edit</span>
+                <Edit class="mr-3 size-5 text-gray-400" aria-hidden="true" />
+                <span>Edit</span>
                 </Link>
                 </MenuItem>
                 <MenuItem v-slot="{ active }">
                 <a href="#"
                   :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'flex px-4 py-2 text-sm']">
                   <Trash class="mr-3 size-5 text-gray-400" aria-hidden="true" />
-                  <span>Embed</span>
+                  <span>Delete</span>
                 </a>
                 </MenuItem>
-                
+
               </div>
             </MenuItems>
           </transition>
