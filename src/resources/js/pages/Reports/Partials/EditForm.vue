@@ -66,7 +66,7 @@ function saveReport() {
    
 
     
-  <div class="grid h-screen min-h-0 gap-4 md:grid-cols-2">
+  <div class="grid h-screen min-h-0 mt-4 gap-4 md:grid-cols-2">
     <!-- Prompt Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
@@ -75,7 +75,7 @@ function saveReport() {
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
           placeholder="Type your prompt here..."></textarea>
       </div>
-      <div class="w-full bg-white p-4 border-t flex gap-2 z-10 mt-4">
+      <div class="w-full bg-white p-4  flex gap-2 z-10 mt-4">
         <button
           class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
           @click="testRun"
@@ -102,7 +102,7 @@ function saveReport() {
         <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]"
           v-html="reportHtml"></div>
       </div>
-      <div class="w-full bg-white p-4 border-t flex z-10 mt-4">
+      <div class="w-full bg-white p-4  flex z-10 mt-4">
         <button class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
           :disabled="!reportHtml" @click="saveReport">
           Save Report
