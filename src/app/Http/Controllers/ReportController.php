@@ -130,6 +130,15 @@ class ReportController extends Controller
     public function edit(Report $report)
     {
         //
+        try {
+            return Inertia::render('Reports/Edit', [
+                'report' => $report,
+                'project' => $report->project,
+            ]);
+        }
+        catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to load report: ' . $e->getMessage()])->withInput();
+        }
     }
 
     /**
@@ -138,6 +147,21 @@ class ReportController extends Controller
     public function update(Request $request, Report $report)
     {
         //
+        try {
+            $request->validate([
+                'prompt' => 'required|string',
+                'result' => 'required|string',
+            ]);
+    
+            $report->update([
+                'prompt' => $request->prompt,
+                'result' => $request->result,
+            ]);
+    
+            return to_route('projects.reports.index', $report->project_id);
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to update report: ' . $e->getMessage()])->withInput();
+        }
     }
 
     /**

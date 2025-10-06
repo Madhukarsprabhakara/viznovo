@@ -8,4 +8,9 @@ class Report extends Model
 {
     //
     protected $guarded = [];
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
 }
