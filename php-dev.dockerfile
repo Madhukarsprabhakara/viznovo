@@ -4,6 +4,7 @@ RUN addgroup -g 1000 laravel && adduser -G laravel -g laravel -s /bin/sh -D lara
 RUN mkdir -p /var/www/html
 
 RUN apk update
+RUN apk add --no-cache poppler-utils
 RUN apk add libxml2-dev
 RUN apk add php-bcmath
 RUN apk add libpq-dev \
