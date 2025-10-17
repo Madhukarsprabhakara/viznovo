@@ -28,7 +28,7 @@
             </div>
         </div>
         <button type="submit"
-            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition"
+            class="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground shadow-xs hover:bg-primary/60 text-white text-sm font-medium rounded  transition"
             :disabled="!files.length || form.processing">
             <span v-if="form.processing">{{ form.progress ? form.progress.percentage + '%' : 'Uploading...' }}</span>
             <span v-else>Upload Files</span>

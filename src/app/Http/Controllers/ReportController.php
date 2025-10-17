@@ -9,6 +9,8 @@ use App\Models\Project;
 use Spatie\PdfToText\Pdf;
 use Illuminate\Support\Str;
 use App\Services\AIService;
+use League\Csv\Reader;
+
 class ReportController extends Controller
 {
     /**
@@ -28,6 +30,17 @@ class ReportController extends Controller
         }
     }
 
+    public function createForm(Project $project)
+    {
+        try {
+            return Inertia::render('Reports/Create', [
+                'project' => $project,
+                'reports' => $project->reports,
+            ]);
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to load project: ' . $e->getMessage()])->withInput();
+        }
+    }
     /**
      * Show the form for creating a new resource.
      */
@@ -43,42 +56,75 @@ class ReportController extends Controller
             //get the response from openai
             //store it in reports table
             // Get all PDF files for the project
-            $pdfFiles = $project->files()->where('type', 'application/pdf')->get();
-
+            $allFiles = $project->files;
+            // $allFiles = $project->files()->where('type', 'application/pdf')->get();
 
             $pdfContentArr = [];
-            foreach ($pdfFiles as $file) {
-                // Adjust the disk and path as per your storage setup
-                $filePath = storage_path('app/private/' . $file->url);
+            $csvContentArr = [];
+            foreach ($allFiles as $file) {
+                if ($file->type === 'application/pdf') {
+                    // Adjust the disk and path as per your storage setup
+                    $filePath = storage_path('app/private/' . $file->url);
 
-                $content = '';
-                try {
-                    $content = Str::of(Pdf::getText($filePath))
-                        ->split("/\f/")
-                        ->toArray();
-                } catch (\Exception $e) {
-                    $content = 'Could not extract text: ' . $e->getMessage();
+                    $content = '';
+                    try {
+                        $content = Str::of(Pdf::getText($filePath))
+                            ->split("/\f/")
+                            ->toArray();
+                    } catch (\Exception $e) {
+                        $content = 'Could not extract text: ' . $e->getMessage();
+                    }
+
+                    $pdfContentArr[] = [
+                        'filename' => $file->name ?? basename($file->system_name),
+                        'pdf_content' => $content,
+                    ];
                 }
+                if ($file->type === 'text/csv') {
+                    $filePath = storage_path('app/private/' . $file->url);
 
-                $pdfContentArr[] = [
-                    'filename' => $file->name ?? basename($file->system_name),
-                    'pdf_content' => $content,
-                ];
+                    try {
+                        // Create reader and assume first row is header
+                        $csv = Reader::createFromPath($filePath, 'r');
+                        $csv->setHeaderOffset(0);
+
+                        // Convert records iterator to array of associative arrays
+                        $records = iterator_to_array($csv->getRecords(), false);
+                    } catch (\League\Csv\Exception $e) {
+                        // Fallback: try a simple parse if the CSV has no header or parsing fails
+                        try {
+                            $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                            $records = array_map(function ($line) {
+                                return str_getcsv($line);
+                            }, $lines);
+                        } catch (\Exception $e2) {
+                            $records = ['error' => 'Could not parse CSV: ' . $e2->getMessage()];
+                        }
+                    } catch (\Exception $e) {
+                        $records = ['error' => 'Could not read CSV: ' . $e->getMessage()];
+                    }
+
+                    $csvContentArr[] = [
+                        'csv_filename' => $file->name ?? basename($file->system_name),
+                        'csv_data' => $records,
+                    ];
+                }
+                // Handle CSV files similarly if needed
             }
 
             // Example for csv_content (empty for now)
-            $csvContentArr = [];
+
 
             $input_data = [
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
             ];
-
+            
             $jsonData = json_encode($input_data);
             $result = $aiService->getOpenAIReport($request->prompt, $jsonData);
             return $result;
-           // return response()->json($result);
-           
+            // return response()->json($result);
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
@@ -96,11 +142,12 @@ class ReportController extends Controller
             'project_id' => 'required|exists:projects,id',
             'prompt' => 'required|string',
             'result' => 'required|string',
+            'title' => 'required|string|max:255',
         ]);
         Report::create([
             'user_id' => auth()->id(),
             'uuid' => Str::uuid(),
-            'title' => 'Report for project ' . $request->project_id,
+            'title' => $request->title,
             'project_id' => $request->project_id,
             'prompt' => $request->prompt,
             'result' => $request->result,
@@ -135,8 +182,7 @@ class ReportController extends Controller
                 'report' => $report,
                 'project' => $report->project,
             ]);
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to load report: ' . $e->getMessage()])->withInput();
         }
     }
@@ -152,12 +198,12 @@ class ReportController extends Controller
                 'prompt' => 'required|string',
                 'result' => 'required|string',
             ]);
-    
+
             $report->update([
                 'prompt' => $request->prompt,
                 'result' => $request->result,
             ]);
-    
+
             return to_route('projects.reports.index', $report->project_id);
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to update report: ' . $e->getMessage()])->withInput();

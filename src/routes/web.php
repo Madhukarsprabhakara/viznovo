@@ -54,6 +54,8 @@ Route::post('/projects/{project}/greports', [App\Http\Controllers\ReportControll
 Route::post('/projects/{project}/sreports', [App\Http\Controllers\ReportController::class, 'store'])
     ->middleware(['auth', 'verified'])->name('projects.reports.store');
 
+Route::get('/reports/{project}/create', [App\Http\Controllers\ReportController::class, 'createForm'])
+    ->middleware(['auth', 'verified'])->name('reports.create');
 Route::get('/reports/{uuid}', [App\Http\Controllers\ReportController::class, 'show'])->name('reports.show');
 Route::get('/reports/{report}/edit', [App\Http\Controllers\ReportController::class, 'edit'])
     ->middleware(['auth', 'verified'])->name('reports.edit');

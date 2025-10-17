@@ -9,6 +9,7 @@ services:
       - ./postgresql/data:/var/lib/postgresql/data
     ports:
       - 5433:5432
+    restart: always
     environment:
       - POSTGRES_DB=irep
       - POSTGRES_USER=postgres
@@ -24,6 +25,7 @@ services:
       - irep
     ports:
       - 80:80
+    restart: always
     volumes:
       - ./src/public:/var/www/html/public
   irep_php:
@@ -31,6 +33,7 @@ services:
       context: .
       dockerfile: php-dev.dockerfile
     container_name: irep_php
+    restart: always
     volumes:
       - ./src:/var/www/html
       - ./php/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini
@@ -42,6 +45,7 @@ services:
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
+    restart: always
     networks:
       - irep
   irep_artisan:
@@ -49,6 +53,7 @@ services:
       context: .
       dockerfile: php-dev.dockerfile
     container_name: irep_artisan
+    restart: always
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
@@ -60,6 +65,7 @@ services:
       context: .
       dockerfile: node-dev.dockerfile
     container_name: irep_npm
+    restart: always
     ports:
       - 5173:5173
     volumes:

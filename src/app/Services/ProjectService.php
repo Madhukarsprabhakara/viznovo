@@ -39,6 +39,6 @@ class ProjectService
         $projectData->save();
 
         // 3. Return the path or any other info if needed
-        return $path;
+        return $projectData;
     }
 }

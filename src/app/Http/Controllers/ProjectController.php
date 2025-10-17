@@ -99,6 +99,7 @@ class ProjectController extends Controller
             $files = $request->file('files');
             foreach ($files as $file) {
                 $projectService->handleFileUpload($project, $file);
+                //dispatch a job to process csv file
             }
             
             // $projectService->handleFileUpload($project, $file);
