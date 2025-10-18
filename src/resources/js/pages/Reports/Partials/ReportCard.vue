@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-5 sm:px-6">
+  <div class="px-4  py-5 sm:px-6">
     <div class="flex space-x-3">
       <div class="min-w-0 flex-1">
         <p class="text-sm font-semibold text-gray-900">
@@ -12,13 +12,16 @@
       <div class="flex shrink-0 self-center gap-2">
         <!-- Copy to Clipboard Badge Button -->
 
-        <a :href="`/reports/${report.uuid}`" target="_blank">
-          <span
-            class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-            <ExternalLink class="mr-1 size-4" aria-hidden="true" />
-            {{ `/reports/${report.uuid}` }}
-          </span>
+        <a
+          :href="`/reports/${report.uuid}`"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center rounded-md  text-orange-700 hover:bg-blue-50"
+          :title="`Open public report /reports/${report.uuid}`"
+        >
+          <ExternalLink class="size-4" aria-hidden="true" />
         </a>
+        
         <Menu as="div" class="relative inline-block text-left">
           <MenuButton
             class="relative flex items-center rounded-full text-gray-400 outline-offset-[6px] hover:text-gray-600">
@@ -59,7 +62,7 @@
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { MoreVertical, Edit, Trash, Flag, ExternalLink } from 'lucide-vue-next'
+import { MoreVertical, Edit, Trash, LinkIcon, ExternalLink } from 'lucide-vue-next'
 import { Link } from '@inertiajs/vue3'
 
 const props = defineProps({
