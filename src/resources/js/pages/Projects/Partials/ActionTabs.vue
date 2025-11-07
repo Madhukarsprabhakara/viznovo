@@ -33,7 +33,7 @@ const props = defineProps<{
 }>();
 const tabs = [
   { name: 'File Uploads', href: '/projects/' + props.project_id, icon: Upload, current: false },
-  { name: 'Intelligent Designer Reports', href: '/projects/' + props.project_id + '/reports', icon: ChartNoAxesCombined, current: false },
+  { name: 'Intelligent Dashboards', href: '/projects/' + props.project_id + '/reports', icon: ChartNoAxesCombined, current: false },
   
 ]
 </script>

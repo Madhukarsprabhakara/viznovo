@@ -3,7 +3,7 @@
     <!-- Prompt Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label for="prompt" class="mb-2 font-semibold text-gray-700">Enter prompt to analyze and generate a report</label>
+        <label for="prompt" class="mb-2 font-semibold text-gray-700">Enter prompt to analyze data and generate a dashboard</label>
         <textarea id="prompt" v-model="prompt"
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
           placeholder="Type your prompt here..." @input="savePrompt"></textarea>
@@ -31,7 +31,7 @@
     <!-- Report Preview Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label class="mb-2 font-semibold text-gray-700">Report Preview</label>
+        <label class="mb-2 font-semibold text-gray-700">Dashboard Preview</label>
         <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]"
           v-html="reportHtml"></div>
       </div>
@@ -40,12 +40,12 @@
         <input
           v-model="reportName"
           type="text"
-          placeholder="Report Name"
+          placeholder="Dashboard Name"
           class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
         />
         <button class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
           :disabled="!reportHtml || !reportName" @click="saveReport">
-          Save Report
+          Save Dashboard
         </button>
       </div>
     </div>
