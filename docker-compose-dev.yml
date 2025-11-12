@@ -63,7 +63,7 @@ services:
   irep_npm:
     build:
       context: .
-      dockerfile: node-dev.dockerfile
+      dockerfile: php-dev.dockerfile
     container_name: irep_npm
     restart: always
     ports:

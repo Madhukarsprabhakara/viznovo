@@ -70,7 +70,7 @@ function saveReport() {
     <!-- Prompt Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label for="prompt" class="mb-2 font-semibold text-gray-700">Edit prompt and rerun report</label>
+        <label for="prompt" class="mb-2 font-semibold text-gray-700">Edit prompt to analyze data and generate a dashboard</label>
         <textarea id="prompt" v-model="prompt"
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
           placeholder="Type your prompt here..."></textarea>
@@ -98,7 +98,7 @@ function saveReport() {
     <!-- Report Preview Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label class="mb-2 font-semibold text-gray-700">Report Preview</label>
+        <label class="mb-2 font-semibold text-gray-700">Dashboard Preview</label>
         <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]"
           v-html="reportHtml"></div>
       </div>
