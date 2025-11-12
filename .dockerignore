@@ -1,0 +1,3 @@
+# ignore storage private files and other large/generated folders
+/src/storage/app/private/projects
+/src/storage/app/private
