@@ -7,7 +7,7 @@ RUN apk update
 
 RUN chmod -R 777 /var/www/html/storage
 RUN chmod -R 777 /var/www/html/bootstrap/cache
-RUN chmod -R 777 /var/www/html/storage/app/private/projects
+
 # install node and npm (Alpine packages)
 RUN apk add --no-cache nodejs npm
 
