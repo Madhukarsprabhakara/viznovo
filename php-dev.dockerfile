@@ -4,6 +4,11 @@ RUN addgroup -g 1000 laravel && adduser -G laravel -g laravel -s /bin/sh -D lara
 RUN mkdir -p /var/www/html
 
 RUN apk update
+
+# install node and npm (Alpine packages)
+RUN apk add --no-cache nodejs npm
+
+
 RUN apk add --no-cache poppler-utils
 RUN apk add libxml2-dev
 RUN apk add php-bcmath

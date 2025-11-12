@@ -10,7 +10,7 @@ use Spatie\PdfToText\Pdf;
 use Illuminate\Support\Str;
 use App\Services\AIService;
 use League\Csv\Reader;
-
+use League\Csv\Statement;
 class ReportController extends Controller
 {
     /**
@@ -44,6 +44,22 @@ class ReportController extends Controller
     /**
      * Show the form for creating a new resource.
      */
+    public function batch(Request $request, Project $project, AIService $aiService)
+    {
+        //
+        try {
+            //access the csv
+            //get 500 rows at a time
+            //create batch jsonl file
+            //send to openai
+            //store results
+            //take individual results and consolidate into final report using openai
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
     public function create(Request $request, Project $project, AIService $aiService)
     {
         //
@@ -87,9 +103,15 @@ class ReportController extends Controller
                         // Create reader and assume first row is header
                         $csv = Reader::createFromPath($filePath, 'r');
                         $csv->setHeaderOffset(0);
+                        $csv->setEscape('');
 
+                        $stmt = new Statement()
+                            ->limit(1000);
+
+                        $records = $stmt->process($csv);
+                        // return response()->json($records);
                         // Convert records iterator to array of associative arrays
-                        $records = iterator_to_array($csv->getRecords(), false);
+                        // return $records = iterator_to_array($csv->getRecords(), false);
                     } catch (\League\Csv\Exception $e) {
                         // Fallback: try a simple parse if the CSV has no header or parsing fails
                         try {
@@ -109,17 +131,16 @@ class ReportController extends Controller
                         'csv_data' => $records,
                     ];
                 }
-                // Handle CSV files similarly if needed
             }
 
-            // Example for csv_content (empty for now)
+
 
 
             $input_data = [
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
             ];
-            
+
             $jsonData = json_encode($input_data);
             $result = $aiService->getOpenAIReport($request->prompt, $jsonData);
             return $result;
