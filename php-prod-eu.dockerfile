@@ -3,6 +3,7 @@ FROM php:8.4-fpm-alpine
 RUN addgroup -g 1000 laravel && adduser -G laravel -g laravel -s /bin/sh -D laravel
 RUN mkdir -p /var/www/html
 ADD ./src/ /var/www/html
+ADD ./php/php-custom.ini  /usr/local/etc/php/conf.d/php-custom.ini
 RUN apk update
 
 RUN chmod -R 777 /var/www/html/storage

@@ -13,7 +13,9 @@ Route::get('/', function () {
     }
     return Inertia::render('Welcome');
 })->name('home');
-
+Route::get('/arpitha', function () {
+    return phpinfo();
+})->name('arpitha');
 Route::get('dashboard', function () {
     return redirect()->route('projects.index');
 })->middleware(['auth', 'verified'])->name('dashboard');
