@@ -37,6 +37,8 @@ services:
       dockerfile: php-prod-eu.dockerfile
     container_name: irep_php
     restart: always
+    volumes:
+      - ./src/storage/app/private:/var/www/html/storage/app/private
     networks:
       - irep
   irep_composer:
