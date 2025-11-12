@@ -25,6 +25,7 @@ services:
       - irep
     ports:
       - 80:80
+      - 443:443
     restart: always
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
