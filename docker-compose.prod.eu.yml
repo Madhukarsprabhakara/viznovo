@@ -74,3 +74,8 @@ services:
     entrypoint: ["npm"]
     networks:
       - irep
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
