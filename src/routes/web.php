@@ -14,7 +14,7 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 Route::get('/arpitha', function () {
-    sleep(600);
+    sleep(500);
     return phpinfo();
 })->name('arpitha');
 Route::get('dashboard', function () {
