@@ -1,0 +1,84 @@
+networks:
+  irep:
+    name: irep
+services:
+  irep_db:
+    image: postgres:14.12
+    container_name: irep_db
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+    ports:
+      - 5433:5432
+    restart: always
+    environment:
+      - POSTGRES_DB=irep
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1RJN0N2Kk47GvqRqo1Ezx3Vt
+    networks:
+      - irep
+  irep_nginx:
+    build:
+      context: .
+      dockerfile: nginx-prod-us.dockerfile
+    container_name: irep_nginx
+    networks:
+      - irep
+    ports:
+      - 80:80
+      - 443:443
+    restart: always
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    depends_on:
+      - irep_php
+  irep_php:
+    build:
+      context: .
+      dockerfile: php-prod-us.dockerfile
+    container_name: irep_php
+    restart: always
+    volumes:
+      - ./src/storage/app/private:/var/www/html/storage/app/private
+    networks:
+      - irep
+  irep_composer:
+    image: composer:latest
+    container_name: irep_composer
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    restart: always
+    networks:
+      - irep
+  irep_artisan:
+    build:
+      context: .
+      dockerfile: php-prod-us.dockerfile
+    container_name: irep_artisan
+    restart: always
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ["php", "artisan"]
+    networks:
+      - irep
+  irep_npm:
+    build:
+      context: .
+      dockerfile: php-prod-us.dockerfile
+    container_name: irep_npm
+    restart: always
+    ports:
+      - 5173:5173
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ["npm"]
+    networks:
+      - irep
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
