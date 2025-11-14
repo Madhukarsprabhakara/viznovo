@@ -13,7 +13,7 @@ import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-nex
         <div class="text-xl font-bold text-indigo-600">viznovo</div>
         <div class="flex items-center gap-4">
           <Link :href="login()" class="text-sm text-slate-700 hover:text-indigo-600">Log in</Link>
-          <Link :href="register()" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700">Register</Link>
+          <!-- <Link :href="register()" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700">Register</Link> -->
         </div>
       </nav>
     </div>
@@ -33,9 +33,9 @@ import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-nex
           </p>
 
           <div class="mt-8 flex flex-wrap gap-3">
-            <Link :href="register()" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md shadow-lg hover:bg-indigo-700 text-lg font-medium">
-              Start free trial
-            </Link>
+            <a href="https://viznovo.com/reports/518b8a2e-a752-464e-85a0-d11e3e719de3" target="_blank" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md shadow-lg hover:bg-indigo-700 text-lg font-medium">
+              Example dashboard
+            </a>
             <a href="#pricing" class="inline-flex items-center px-6 py-3 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 text-lg">
               See pricing
             </a>
@@ -48,7 +48,7 @@ import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-nex
             </div>
             <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
               <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Plain English</div>
-              <div class="mt-2 font-medium text-slate-900">No SQL, no coding required, no formulas</div>
+              <div class="mt-2 font-medium text-slate-900">No SQL, no coding, no formulas</div>
             </div>
             <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
               <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Minutes, not hours</div>
@@ -128,7 +128,7 @@ import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-nex
               </div>
 
               <div class="mt-3 text-xs text-white/80 text-center">
-                ✨ Generated in seconds
+                ✨ Generated in minutes
               </div>
             </div>
           </div>
@@ -197,9 +197,9 @@ import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-nex
         </ul>
 
         <div class="mt-8">
-          <Link :href="register()" class="block w-full text-center px-6 py-3 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700">
-            Get started
-          </Link>
+          <a href="#" class="block w-full text-center px-6 py-3 bg-indigo-600 text-white rounded-md font-medium hover:bg-indigo-700">
+            Talk to us
+          </a>
         </div>
       </div>
     </section>
