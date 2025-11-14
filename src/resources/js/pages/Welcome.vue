@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3'
 import { login, register, dashboard } from '@/routes'
-import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-next'
+import { FileText, FileSpreadsheet, Sparkles, BarChart3 } from 'lucide-vue-next'
 </script>
 
 <template>
@@ -13,7 +13,6 @@ import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-nex
         <div class="text-xl font-bold text-indigo-600">viznovo</div>
         <div class="flex items-center gap-4">
           <Link :href="login()" class="text-sm text-slate-700 hover:text-indigo-600">Log in</Link>
-          <!-- <Link :href="register()" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700">Register</Link> -->
         </div>
       </nav>
     </div>
@@ -85,11 +84,18 @@ import { FileText, FileSpreadsheet, ArrowRight, BarChart3 } from 'lucide-vue-nex
               </div>
             </div>
 
-            <!-- Arrow/transformation indicator -->
-            <div class="flex items-center justify-center my-4">
-              <div class="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-full">
-                <ArrowRight class="w-5 h-5 text-indigo-600 animate-pulse" />
-                <span class="text-xs font-medium text-indigo-700">AI Processing</span>
+            <!-- AI Processing indicator with gradient glow -->
+            <div class="flex items-center justify-center my-5">
+              <div class="relative">
+                <!-- Glowing background -->
+                <div class="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full blur-lg opacity-60 animate-pulse"></div>
+                
+                <!-- Main container -->
+                <div class="relative flex items-center gap-3 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg">
+                  <Sparkles class="w-5 h-5 text-white animate-spin" style="animation-duration: 2s;" />
+                  <span class="text-sm font-semibold text-white">AI Processing</span>
+                  <Sparkles class="w-5 h-5 text-white animate-spin" style="animation-duration: 2s; animation-direction: reverse;" />
+                </div>
               </div>
             </div>
 
