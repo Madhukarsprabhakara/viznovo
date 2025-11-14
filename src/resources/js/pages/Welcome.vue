@@ -42,16 +42,16 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3 } from 'lucide-vue-next'
 
           <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
-              <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Unlimited dashboards</div>
-              <div class="mt-2 font-medium text-slate-900">Create as many as you need</div>
+              <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">stunning dashboards</div>
+              <!-- <div class="mt-2 font-medium text-slate-900">Create as many as you need</div> -->
             </div>
             <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
               <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Plain English</div>
-              <div class="mt-2 font-medium text-slate-900">No SQL, no coding, no formulas</div>
+              <!-- <div class="mt-2 font-medium text-slate-900">No SQL, no coding, no formulas</div> -->
             </div>
             <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200">
               <div class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Minutes, not hours</div>
-              <div class="mt-2 font-medium text-slate-900">Generate stunning dashboards instantly</div>
+              <!-- <div class="mt-2 font-medium text-slate-900">Generate stunning dashboards instantly</div> -->
             </div>
           </div>
         </div>
