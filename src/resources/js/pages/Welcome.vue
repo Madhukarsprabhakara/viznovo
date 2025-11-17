@@ -280,7 +280,7 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
               </li>
               <li class="flex items-start gap-3">
                 <CheckCircle class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <span class="text-sm text-slate-700">Automatically built dashboards</span>
+                <span class="text-sm text-slate-700">Automatically built dashboards from PDFs, CSVs or a combination of both</span>
               </li>
               <li class="flex items-start gap-3">
                 <CheckCircle class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
