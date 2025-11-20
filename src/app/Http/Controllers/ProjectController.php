@@ -69,14 +69,32 @@ class ProjectController extends Controller
     public function edit(Project $project)
     {
         //
+        try {
+            return Inertia::render('Projects/Partials/Edit', [
+                'project' => $project,
+            ]);
+        }
+        catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to load project for editing: ' . $e->getMessage()])->withInput();
+        }
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Project $project)
+    public function update(Request $request, Project $project, ProjectService $projectService)
     {
         //
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+            ]);
+            $projectService->updateProject($project, $request->all());
+            return redirect()->route('projects.index')->with('success', 'Project updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back();
+        }
     }
 
     /**
@@ -85,6 +103,12 @@ class ProjectController extends Controller
     public function destroy(Project $project)
     {
         //
+        try {
+            $project->delete();
+            return redirect()->route('projects.index')->with('success', 'Project deleted successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back();
+        }
     }
 
     public function upload(Request $request, Project $project, ProjectService $projectService)

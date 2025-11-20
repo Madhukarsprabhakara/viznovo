@@ -18,6 +18,15 @@ class ProjectService
 
         return $project;
     }
+    public function updateProject($project, $data)
+    {
+        // Logic to update a project
+        $project->name = $data['name'];
+        $project->description = $data['description'] ?? null;
+        $project->save();
+
+        return $project;
+    }
     public function getProjectsByUser($userId)
     {
         return \App\Models\Project::where('user_id', $userId)->get();

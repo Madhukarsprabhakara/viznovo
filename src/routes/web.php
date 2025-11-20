@@ -37,7 +37,12 @@ Route::get('/projects', [App\Http\Controllers\ProjectController::class, 'index']
     ->middleware(['auth', 'verified'])->name('projects.index');
 Route::get('/projects/create', [App\Http\Controllers\ProjectController::class, 'create'])
     ->middleware(['auth', 'verified'])->name('projects.create');
-
+Route::get('/projects/{project}/edit', [App\Http\Controllers\ProjectController::class, 'edit'])
+    ->middleware(['auth', 'verified'])->name('projects.edit');
+Route::put('/projects/{project}', [App\Http\Controllers\ProjectController::class, 'update'])
+    ->middleware(['auth', 'verified'])->name('projects.update');
+Route::delete('/projects/{project}', [App\Http\Controllers\ProjectController::class, 'destroy'])
+    ->middleware(['auth', 'verified'])->name('projects.destroy');    
 Route::post('/projects', [App\Http\Controllers\ProjectController::class, 'store'])
     ->middleware(['auth', 'verified'])->name('projects.store');
 
