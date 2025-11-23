@@ -324,16 +324,16 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
     <section id="pricing" class="bg-gradient-to-b from-indigo-50 to-white">
       <div class="max-w-7xl mx-auto px-6 py-16">
         <div class="text-center mb-10">
-          <h2 class="text-3xl font-bold">Simple, transparent pricing</h2>
-          <p class="mt-3 text-slate-600">One plan. Everything included.</p>
+          <h2 class="text-3xl font-bold">One plan. Everything included.</h2>
+          <!-- <p class="mt-3 text-slate-600">One plan. Everything included.</p> -->
         </div>
 
         <div class="max-w-lg mx-auto bg-white border border-slate-200 rounded-xl shadow-lg p-8">
           <div class="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Pro Plan</div>
-          <div class="mt-4 flex items-baseline gap-2">
+          <!-- <div class="mt-4 flex items-baseline gap-2">
             <span class="text-5xl font-bold">$24,000</span>
             <span class="text-lg text-slate-600">/year</span>
-          </div>
+          </div> -->
           <!-- <div class="text-sm text-slate-500 mt-1">Billed annually ($24,000/year)</div> -->
 
           <ul class="mt-8 space-y-3 text-sm text-slate-700">
