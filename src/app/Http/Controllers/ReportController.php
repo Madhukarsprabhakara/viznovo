@@ -237,5 +237,12 @@ class ReportController extends Controller
     public function destroy(Report $report)
     {
         //
+        try {
+            $projectId = $report->project_id;
+            $report->delete();
+            return to_route('projects.reports.index', $projectId);
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to delete report: ' . $e->getMessage()])->withInput();
+        }
     }
 }

@@ -10,8 +10,6 @@
         </p>
       </div>
       <div class="flex shrink-0 self-center gap-2">
-        <!-- Copy to Clipboard Badge Button -->
-
         <a
           :href="`/reports/${report.uuid}`"
           target="_blank"
@@ -37,20 +35,22 @@
               class="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg outline outline-1 outline-black/5">
               <div class="py-1">
                 <MenuItem v-slot="{ active }">
-                <Link :href="`/reports/${report.id}/edit`"
-                  :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'flex px-4 py-2 text-sm']">
-                <Edit class="mr-3 size-5 text-gray-400" aria-hidden="true" />
-                <span>Edit</span>
-                </Link>
+                  <Link :href="`/reports/${report.id}/edit`"
+                    :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'flex px-4 py-2 text-sm']">
+                    <Edit class="mr-3 size-5 text-gray-400" aria-hidden="true" />
+                    <span>Edit</span>
+                  </Link>
                 </MenuItem>
                 <MenuItem v-slot="{ active }">
-                <a href="#"
-                  :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'flex px-4 py-2 text-sm']">
-                  <Trash class="mr-3 size-5 text-gray-400" aria-hidden="true" />
-                  <span>Delete</span>
-                </a>
+                  <button
+                    type="button"
+                    @click="confirmDelete"
+                    :class="[active ? 'bg-gray-100 text-gray-900 outline-none' : 'text-gray-700', 'flex px-4 py-2 text-sm items-center w-full text-left']"
+                  >
+                    <Trash2 class="mr-3 size-5 text-red-500" aria-hidden="true" />
+                    <span>Delete</span>
+                  </button>
                 </MenuItem>
-
               </div>
             </MenuItems>
           </transition>
@@ -62,8 +62,8 @@
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { MoreVertical, Edit, Trash, LinkIcon, ExternalLink } from 'lucide-vue-next'
-import { Link } from '@inertiajs/vue3'
+import { MoreVertical, Edit, Trash2, ExternalLink } from 'lucide-vue-next'
+import { Link, useForm } from '@inertiajs/vue3'
 
 const props = defineProps({
   report: {
@@ -72,5 +72,29 @@ const props = defineProps({
   }
 })
 
+const form = useForm()
 
+const deleteReportFinally = (reportId) => {
+  form.delete(`/reports/${reportId}`, {
+    errorBag: 'deleteReport',
+    onSuccess: () => {
+      // optional: show client-side feedback or rely on server redirect/flash
+      // e.g. console.log('Deleted')
+    },
+    onError: () => {
+      alert('Failed to delete report. Please try again.')
+    },
+  })
+}
+
+/**
+ * Confirm and delete report via form.delete to /reports/{id}
+ */
+function confirmDelete() {
+  const title = props.report?.title ?? 'this report'
+  const ok = confirm(`Delete report "${title}"? This action cannot be undone.`)
+  if (!ok) return
+
+  deleteReportFinally(props.report.id)
+}
 </script>
