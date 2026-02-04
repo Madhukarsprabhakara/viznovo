@@ -1,12 +1,13 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { usePage, useForm } from '@inertiajs/vue3'
-import ModelSelection from './ModelSelection.vue'
 import axios from 'axios'
+import { CheckCircle } from 'lucide-vue-next'
 
 const page = usePage()
 const projectId = page.props.report.project_id
-const report = page.props.report // { id, prompt, result }
+const report = page.props.report // { id, prompt, result, model_key? }
+const modelList = page.props.aiModels ?? []
 
 const LOCAL_PROMPT_KEY = (projectId, reportId) => `reportPrompt_${projectId}_${reportId}`
 
@@ -14,11 +15,15 @@ const prompt = ref('')
 const reportHtml = ref('')
 const loading = ref(false)
 
+// NEW: selected model "key" (not id)
+const selectedModelKey = ref('')
+
 const saveGeneratedReport = useForm({
   project_id: projectId,
   report_id: report.id,
   prompt: '',
-  result: ''
+  result: '',
+  model_key: '' // optional: include if you persist it on update
 })
 
 // Load initial values from server or localStorage
@@ -26,6 +31,14 @@ onMounted(() => {
   const saved = localStorage.getItem(LOCAL_PROMPT_KEY(projectId, report.id))
   prompt.value = saved ?? report.prompt ?? ''
   reportHtml.value = report.result ?? ''
+
+  // Default model selection:
+  // 1) use report.model_key if provided by backend
+  // 2) else fallback to first model in list
+  selectedModelKey.value = report.model_key ?? selectedModelKey.value
+  if (!selectedModelKey.value && modelList.length) {
+    selectedModelKey.value = modelList[0].key
+  }
 })
 
 // Save prompt to localStorage on change
@@ -42,7 +55,9 @@ async function testRun() {
   loading.value = true
   try {
     const response = await axios.post(`/projects/${projectId}/greports`, {
-      prompt: prompt.value
+      prompt: prompt.value,
+      model_key: selectedModelKey.value // <-- send selected model key
+      // If your backend expects `key` instead, rename to: key: selectedModelKey.value
     })
     reportHtml.value = response.data.data
   } catch (error) {
@@ -55,6 +70,8 @@ async function testRun() {
 function saveReport() {
   saveGeneratedReport.prompt = prompt.value
   saveGeneratedReport.result = reportHtml.value
+  saveGeneratedReport.model_key = selectedModelKey.value
+
   saveGeneratedReport.put(`/reports/${report.id}`, {
     onSuccess: () => {
       // Optionally show a success message or reset form
@@ -64,36 +81,79 @@ function saveReport() {
 </script>
 
 <template>
-   
-
-    
   <div class="grid h-screen min-h-0 mt-4 gap-4 md:grid-cols-2">
     <!-- Prompt Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label for="prompt" class="mb-2 font-semibold text-gray-700">Edit prompt to analyze data and generate a dashboard</label>
-        <textarea id="prompt" v-model="prompt"
+        <label for="prompt" class="mb-2 font-semibold text-gray-700">
+          Edit prompt to analyze data and generate a dashboard
+        </label>
+
+        <textarea
+          id="prompt"
+          v-model="prompt"
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
-          placeholder="Type your prompt here..."></textarea>
+          placeholder="Type your prompt here..."
+        />
       </div>
-      <div class=" flex flex-col min-h-0 mt-3">
-        <ModelSelection />
+
+      <!-- Model Selection -->
+      <div class="flex flex-col min-h-0 mt-3">
+        <fieldset>
+          <legend class="text-sm/6 font-semibold text-gray-900">Select a model</legend>
+
+          <div class="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
+            <label
+              v-for="model in modelList"
+              :key="model.id"
+              :aria-label="model.name"
+              class="group relative flex rounded-lg border border-gray-300 bg-white p-4 has-[:disabled]:border-gray-400 has-[:disabled]:bg-gray-200 has-[:disabled]:opacity-25 has-[:checked]:outline has-[:focus-visible]:outline has-[:checked]:outline-2 has-[:focus-visible]:outline-[3px] has-[:checked]:-outline-offset-2 has-[:focus-visible]:-outline-offset-1 has-[:checked]:outline-indigo-600"
+            >
+              <input
+                v-model="selectedModelKey"
+                type="radio"
+                name="ai-model"
+                :value="model.key"
+                class="absolute inset-0 appearance-none focus:outline focus:outline-0"
+              />
+
+              <div class="flex-1">
+                <span class="block text-sm font-medium text-gray-900">{{ model.name }}</span>
+                <span class="mt-1 block text-sm text-gray-500">{{ model.context_window }}</span>
+              </div>
+
+              <CheckCircle class="invisible size-5 text-indigo-600 group-has-[:checked]:visible" aria-hidden="true" />
+            </label>
+          </div>
+        </fieldset>
       </div>
-      <div class="w-full bg-white p-4  flex gap-2 z-10 mt-4">
+
+      <!-- Actions -->
+      <div class="w-full bg-white p-4 flex gap-2 z-10 mt-4">
         <button
           class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
           @click="testRun"
           :disabled="loading"
         >
-          <svg v-if="loading" class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          <svg
+            v-if="loading"
+            class="animate-spin h-5 w-5 mr-2 text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
+
           <span v-if="loading">Processing...</span>
           <span v-else>Test Run</span>
         </button>
-        <button class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
-          @click="clearPrompt">
+
+        <button
+          class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
+          @click="clearPrompt"
+        >
           Clear
         </button>
       </div>
@@ -103,16 +163,18 @@ function saveReport() {
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
         <label class="mb-2 font-semibold text-gray-700">Dashboard Preview</label>
-        <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]"
-          v-html="reportHtml"></div>
+        <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]" v-html="reportHtml" />
       </div>
-      <div class="w-full bg-white p-4  flex z-10 mt-4">
-        <button class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          :disabled="!reportHtml" @click="saveReport">
+
+      <div class="w-full bg-white p-4 flex z-10 mt-4">
+        <button
+          class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          :disabled="!reportHtml"
+          @click="saveReport"
+        >
           Save Report
         </button>
       </div>
     </div>
   </div>
-
 </template>

@@ -9,8 +9,10 @@ use App\Models\Project;
 use Spatie\PdfToText\Pdf;
 use Illuminate\Support\Str;
 use App\Services\AIService;
+use App\Models\AIModel;
 use League\Csv\Reader;
 use League\Csv\Statement;
+
 class ReportController extends Controller
 {
     /**
@@ -24,6 +26,7 @@ class ReportController extends Controller
             return Inertia::render('Reports/Show', [
                 'project' => $project,
                 'reports' => $project->reports,
+
             ]);
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to load project: ' . $e->getMessage()])->withInput();
@@ -33,9 +36,11 @@ class ReportController extends Controller
     public function createForm(Project $project)
     {
         try {
+            $aiModels = new AIModel();
             return Inertia::render('Reports/Create', [
                 'project' => $project,
                 'reports' => $project->reports,
+                'aiModels' => $aiModels->getModels(),
             ]);
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to load project: ' . $e->getMessage()])->withInput();
@@ -142,8 +147,14 @@ class ReportController extends Controller
             ];
 
             $jsonData = json_encode($input_data);
-            $result = $aiService->getOpenAIReport($request->prompt, $jsonData);
-            // $result = $aiService->getGeminiAI($request->prompt, $jsonData);
+            if ($request->model_key == 'gpt-5') {
+                $result = $aiService->getOpenAIReport($request->prompt, $jsonData);
+            }
+            if ($request->model_key == 'gemini-3-pro') {
+                $result = $aiService->getGeminiAI($request->prompt, $jsonData);
+            }
+
+            // 
             return $result;
             // return response()->json($result);
 
@@ -165,6 +176,7 @@ class ReportController extends Controller
             'prompt' => 'required|string',
             'result' => 'required|string',
             'title' => 'required|string|max:255',
+            'model_key' => 'required|string',
         ]);
         Report::create([
             'user_id' => auth()->id(),
@@ -173,8 +185,9 @@ class ReportController extends Controller
             'project_id' => $request->project_id,
             'prompt' => $request->prompt,
             'result' => $request->result,
-        ]);
+            'model_key' => $request->model_key,
 
+        ]);
         return to_route('projects.reports.index', $request->project_id);
     }
 
@@ -203,6 +216,7 @@ class ReportController extends Controller
             return Inertia::render('Reports/Edit', [
                 'report' => $report,
                 'project' => $report->project,
+                'aiModels' => (new AIModel())->getModels(),
             ]);
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to load report: ' . $e->getMessage()])->withInput();
@@ -219,11 +233,13 @@ class ReportController extends Controller
             $request->validate([
                 'prompt' => 'required|string',
                 'result' => 'required|string',
+                'model_key' => 'required|string',
             ]);
 
             $report->update([
                 'prompt' => $request->prompt,
                 'result' => $request->result,
+                'model_key' => $request->model_key,
             ]);
 
             return to_route('projects.reports.index', $report->project_id);
