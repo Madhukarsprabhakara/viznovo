@@ -37,6 +37,9 @@ return [
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
     ],
+    'gemini' => [
+        'key' => env('GOOGLE_GEMINI_API_KEY'),
+    ],
     'llama' => [
         'key' => env('LLAMA_API_KEY'),
     ],

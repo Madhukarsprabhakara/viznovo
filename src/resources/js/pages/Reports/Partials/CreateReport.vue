@@ -4,10 +4,14 @@
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
         <label for="prompt" class="mb-2 font-semibold text-gray-700">Enter prompt to analyze data and generate a dashboard</label>
-        <textarea id="prompt" v-model="prompt"
+        <textarea id="prompt" v-model="prompt" 
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
           placeholder="Type your prompt here..." @input="savePrompt"></textarea>
       </div>
+      <div class=" flex flex-col min-h-0 mt-3">
+        <ModelSelection />
+      </div>
+      
       <div class="w-full bg-white p-4 border-t flex gap-2 z-10 mt-4">
         <button
           class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
@@ -55,6 +59,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { usePage, useForm } from '@inertiajs/vue3'
+import ModelSelection from './ModelSelection.vue'
 import axios from 'axios'
 
 const page = usePage()

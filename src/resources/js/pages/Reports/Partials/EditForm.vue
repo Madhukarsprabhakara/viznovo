@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { usePage, useForm } from '@inertiajs/vue3'
+import ModelSelection from './ModelSelection.vue'
 import axios from 'axios'
 
 const page = usePage()
@@ -74,6 +75,9 @@ function saveReport() {
         <textarea id="prompt" v-model="prompt"
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
           placeholder="Type your prompt here..."></textarea>
+      </div>
+      <div class=" flex flex-col min-h-0 mt-3">
+        <ModelSelection />
       </div>
       <div class="w-full bg-white p-4  flex gap-2 z-10 mt-4">
         <button

@@ -143,6 +143,7 @@ class ReportController extends Controller
 
             $jsonData = json_encode($input_data);
             $result = $aiService->getOpenAIReport($request->prompt, $jsonData);
+            // $result = $aiService->getGeminiAI($request->prompt, $jsonData);
             return $result;
             // return response()->json($result);
 
