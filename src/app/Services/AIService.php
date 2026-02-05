@@ -5,6 +5,9 @@ namespace App\Services;
 use Aws\BedrockRuntime\BedrockRuntimeClient;
 use Illuminate\Database\Eloquent\JsonEncodingException;
 use Illuminate\Support\Facades\Http;
+use App\Services\KeyService;
+use Laravel\Prompts\Key;
+use Illuminate\Support\Facades\Crypt;
 
 use function Pest\Laravel\json;
 
@@ -173,7 +176,9 @@ class AIService
   }
   public function getGeminiAI($prompt, $jsonData)
   {
-    $gemini_key = config('services.gemini.key');
+    $keyService = new KeyService();
+    // return Crypt::decryptString($keyService->getModelAccess('gemini-3-pro', auth()->id())->token);
+    $gemini_key = Crypt::decryptString($keyService->getModelAccess('gemini-3-pro', auth()->id())->token);
     try {
       $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent';
 
@@ -238,7 +243,8 @@ class AIService
   public function getOpenAI($prompt, $jsonData)
   {
     try {
-      $client = \OpenAI::client(config('services.openai.key'));
+      $keyService = new KeyService();
+      $client = \OpenAI::client(Crypt::decryptString($keyService->getModelAccess('gpt-5', auth()->id())->token));
 
       $result = $client->chat()->create([
         'model' => 'gpt-5',
