@@ -22,6 +22,10 @@ const sidebarNavItems: NavItem[] = [
         title: 'Appearance',
         href: appearance(),
     },
+    {
+        title: 'API Keys',
+        href: '/apikeys',
+    },
 ];
 
 const currentPath = typeof window !== undefined ? window.location.pathname : '';
