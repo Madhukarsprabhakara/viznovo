@@ -29,12 +29,12 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
               <span class="text-indigo-600">For Investment Teams.</span>
             </h1>
             <p class="mt-6 text-lg text-slate-600 max-w-2xl">
-              Upload PDF reports, CSVs, or data files — and get analyst-grade dashboards, insights, KPIs, and IC memos <span class="text-yellow-600 font-semibold">in minutes</span>, <span class="text-green-600 font-semibold">using plain English</span>. Purpose-built for private equity, venture capital, and institutional and impact funds.
+              Upload PDF reports, CSVs, or data files — and get analyst-grade <span class="font-semibold">dashboards</span> <span class="text-yellow-600 font-semibold">in minutes</span>, <span class="text-green-600 font-semibold">using plain English</span>. Purpose-built for private equity, venture capital, and institutional and impact funds.
             </p>
 
             <div class="mt-8 flex flex-wrap gap-3">
               <a href="https://viznovo.com/reports/518b8a2e-a752-464e-85a0-d11e3e719de3" target="_blank" class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md shadow-lg hover:bg-indigo-700 text-lg font-medium">
-                <span class="mr-2">Explore sample dashboard</span> <ExternalLink class="w-5 h-5" />
+                <span class="mr-2">Explore example dashboard</span> <ExternalLink class="w-5 h-5" />
               </a>
               <a href="#pricing" class="inline-flex items-center px-6 py-3 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 text-lg">
                 See pricing
@@ -94,7 +94,7 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
                   <!-- Main container -->
                   <div class="relative flex items-center gap-3 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full shadow-lg">
                     <Sparkles class="w-5 h-5 text-white animate-spin" style="animation-duration: 2s;" />
-                    <span class="text-sm font-semibold text-white">AI Processing</span>
+                    <span class="text-sm font-semibold text-white">AI Agent</span>
                     <Sparkles class="w-5 h-5 text-white animate-spin" style="animation-duration: 2s; animation-direction: reverse;" />
                   </div>
                 </div>
@@ -237,7 +237,7 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
               </div>
               <div>
                 <h3 class="text-lg font-semibold">Upload your data</h3>
-                <p class="mt-2 text-sm text-slate-600">CSV files, PDFs, or website URLs — we extract tables and text automatically.</p>
+                <p class="mt-2 text-sm text-slate-600">CSV files, and/or PDFs.</p>
               </div>
             </div>
 
@@ -247,7 +247,7 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
               </div>
               <div>
                 <h3 class="text-lg font-semibold">Describe in plain English</h3>
-                <p class="mt-2 text-sm text-slate-600">No SQL, no formulas — just tell us what insights or charts you need.</p>
+                <p class="mt-2 text-sm text-slate-600">No SQL, no formulas — just tell us what insights, stories or charts you need.</p>
               </div>
             </div>
 
@@ -312,7 +312,7 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
               rel="noopener noreferrer"
               class="inline-flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-lg shadow-lg hover:bg-indigo-700 transition text-lg font-medium"
             >
-              <span>Explore sample dashboard</span>
+              <span>Explore example dashboard</span>
               <ExternalLink class="w-5 h-5" />
             </a>
           </div>
@@ -324,16 +324,16 @@ import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircl
     <section id="pricing" class="bg-gradient-to-b from-indigo-50 to-white">
       <div class="max-w-7xl mx-auto px-6 py-16">
         <div class="text-center mb-10">
-          <h2 class="text-3xl font-bold">Simple, transparent pricing</h2>
-          <p class="mt-3 text-slate-600">One plan. Everything included.</p>
+          <h2 class="text-3xl font-bold">One simple plan. Everything included.</h2>
+          <!-- <p class="mt-3 text-slate-600">One plan. Everything included.</p> -->
         </div>
 
         <div class="max-w-lg mx-auto bg-white border border-slate-200 rounded-xl shadow-lg p-8">
           <div class="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Pro Plan</div>
-          <div class="mt-4 flex items-baseline gap-2">
+          <!-- <div class="mt-4 flex items-baseline gap-2">
             <span class="text-5xl font-bold">$24,000</span>
             <span class="text-lg text-slate-600">/year</span>
-          </div>
+          </div> -->
           <!-- <div class="text-sm text-slate-500 mt-1">Billed annually ($24,000/year)</div> -->
 
           <ul class="mt-8 space-y-3 text-sm text-slate-700">

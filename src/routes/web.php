@@ -33,6 +33,10 @@ Route::get('llamacsv', [ReadCsvController::class, 'getllama'])
     ->middleware(['auth', 'verified'])
     ->name('llamacsv');
 
+Route::get('/apikeys', [App\Http\Controllers\ModelAccessController::class, 'index'])
+    ->middleware(['auth', 'verified'])->name('apikeys.index');
+Route::post('/apikeys', [App\Http\Controllers\ModelAccessController::class, 'store'])
+    ->middleware(['auth', 'verified'])->name('apikeys.store');
 Route::get('/projects', [App\Http\Controllers\ProjectController::class, 'index'])
     ->middleware(['auth', 'verified'])->name('projects.index');
 Route::get('/projects/create', [App\Http\Controllers\ProjectController::class, 'create'])

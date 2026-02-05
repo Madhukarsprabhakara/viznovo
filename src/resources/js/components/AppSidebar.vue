@@ -19,16 +19,17 @@ const mainNavItems: NavItem[] = [
 ];
 
 const footerNavItems: NavItem[] = [
+    
+    {
+        title: 'Get the Book',
+        href: 'https://madhukarsp.gumroad.com/l/immbook',
+        icon: BookOpen,
+    },
     {
         title: 'Github Repo',
         href: 'https://github.com/Madhukarsprabhakara/viznovo',
         icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
+    }
 ];
 </script>
 
