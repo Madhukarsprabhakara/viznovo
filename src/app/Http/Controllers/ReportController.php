@@ -14,6 +14,7 @@ use League\Csv\Reader;
 use League\Csv\Statement;
 use App\Ai\Agents\DiscoverFiles;
 use App\Ai\Agents\DiscoverFilesStructured;
+use Illuminate\Support\Facades\Auth;
 
 class ReportController extends Controller
 {
@@ -324,18 +325,20 @@ class ReportController extends Controller
         //
         $request->validate([
             'project_id' => 'required|exists:projects,id',
+            'is_automatic' => 'required|boolean',
             'prompt' => 'required|string',
             'result' => 'required|string',
             'title' => 'required|string|max:255',
             'model_key' => 'required|string',
         ]);
         Report::create([
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'uuid' => Str::uuid(),
             'title' => $request->title,
             'project_id' => $request->project_id,
             'prompt' => $request->prompt,
             'result' => $request->result,
+            'is_automatic' => $request->boolean('is_automatic'),
             'model_key' => $request->model_key,
 
         ]);
@@ -347,18 +350,20 @@ class ReportController extends Controller
         //
         $request->validate([
             'project_id' => 'required|exists:projects,id',
+            'is_automatic' => 'required|boolean',
             'prompt' => 'required|string',
             'result' => 'required|string',
             'title' => 'required|string|max:255',
             'model_key' => 'required|string',
         ]);
         Report::create([
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'uuid' => Str::uuid(),
             'title' => $request->title,
             'project_id' => $request->project_id,
             'prompt' => $request->prompt,
             'result' => $request->result,
+            'is_automatic' => $request->boolean('is_automatic'),
             'model_key' => $request->model_key,
 
         ]);

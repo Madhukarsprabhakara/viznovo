@@ -160,6 +160,7 @@ const selectedModelKey = ref('')
 
 const saveGeneratedReport = useForm({
   project_id: projectId,
+  is_automatic: 1,
   prompt: '',
   result: '',
   title: '',
@@ -235,6 +236,7 @@ function saveReport() {
   saveGeneratedReport.result = reportHtml.value
   saveGeneratedReport.title = reportName.value
   saveGeneratedReport.model_key = selectedModelKey.value
+  saveGeneratedReport.is_automatic = 1
 
   saveGeneratedReport.post(`/projects/${projectId}/sautoreports`, {
     onSuccess: () => {
