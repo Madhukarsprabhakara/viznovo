@@ -9,6 +9,7 @@ import { Eye, EyeOff } from 'lucide-vue-next';
 import CreateReport from './Partials/CreateReport.vue';
 import ReportsList from './Partials/ReportsList.vue';
 import ActionTabs from '../Projects/Partials/ActionTabs.vue';
+import ReportsEmpty from './Partials/ReportsEmpty.vue';
 const props = defineProps({ project: Object })
 
 
@@ -52,8 +53,8 @@ onMounted(() => {
             <ActionTabs :project_id="project.id"/>
             <!-- Collapsible Card -->
             
-            <CreateReport v-if="$page.props.reports.length==0" />
-            <ReportsList v-else />
+            <ReportsEmpty v-if="$page.props.reports.length==0" />
+            <ReportsList  v-else/>
 
         </div>
     </AppLayout>

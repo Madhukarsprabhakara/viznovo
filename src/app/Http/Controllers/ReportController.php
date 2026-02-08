@@ -211,6 +211,7 @@ class ReportController extends Controller
     {
         //
         try {
+            // return $request->all();
             // sleep(10); // Simulate a delay for processing
             //get all pdf data for the project
             //extract text from the pdfs
@@ -221,7 +222,7 @@ class ReportController extends Controller
             // Get all PDF files for the project
             $allFiles = $project->files;
             // $allFiles = $project->files()->where('type', 'application/pdf')->get();
-
+            $result = null;
             $pdfContentArr = [];
             $csvContentArr = [];
             foreach ($allFiles as $file) {
@@ -297,7 +298,7 @@ class ReportController extends Controller
             // $resp_array = json_decode($response, true);
             // return $resp_array['next_agent_prompt'];
 
-            $prompt = $request->input('prompt', '');
+            $prompt = $request->input('prompt');
 
             if ($request->model_key == 'gpt-5') {
                 $result = $aiService->getOpenAIReport($prompt, $jsonData);

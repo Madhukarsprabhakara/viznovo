@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ReadCsvController;
-//Live deploy
+//Live deploy ok
 ini_set('max_execution_time', 1200);
 
 Route::get('/', function () {

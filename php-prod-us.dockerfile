@@ -12,7 +12,7 @@ RUN chmod -R 777 /var/www/html/bootstrap/cache
 # install node and npm (Alpine packages)
 RUN apk add --no-cache nodejs npm
 
-
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN apk add --no-cache poppler-utils
 RUN apk add libxml2-dev
 RUN apk add php-bcmath

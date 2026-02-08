@@ -43,11 +43,14 @@ services:
     networks:
       - irep
   irep_composer:
-    image: composer:latest
+    build:
+      context: .
+      dockerfile: php-prod-eu.dockerfile
     container_name: irep_composer
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
+    entrypoint: ["composer"]
     restart: always
     networks:
       - irep
