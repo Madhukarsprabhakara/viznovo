@@ -3,17 +3,53 @@
     <!-- Prompt Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label for="prompt" class="mb-2 font-semibold text-gray-700">
-          Enter prompt to analyze data and generate a dashboard
-        </label>
+        <div class="mb-2 font-semibold text-gray-700">Choose an option to auto-create a dashboard</div>
 
-        <textarea
-          id="prompt"
-          v-model="prompt"
-          class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
-          placeholder="Type your prompt here..."
-          @input="savePrompt"
-        />
+        <div class="grid grid-cols-1 gap-3">
+          <label
+            class="group relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 hover:border-gray-400 has-[:checked]:border-indigo-500 has-[:checked]:ring-2 has-[:checked]:ring-indigo-400/40"
+          >
+            <input
+              v-model="selectedTemplateKey"
+              type="radio"
+              name="dashboard-template"
+              value="impact-project"
+              class="absolute inset-0 appearance-none"
+              @change="applyTemplate"
+            />
+
+            <div class="flex-1">
+              <div class="text-sm font-semibold text-gray-900">Impact measurement (single project)</div>
+              <div class="mt-1 text-sm text-gray-600">
+                Measures impact for the current project with key outcomes, trends over time, and segment breakdowns.
+              </div>
+            </div>
+
+            <CheckCircle class="invisible size-5 text-indigo-600 group-has-[:checked]:visible" aria-hidden="true" />
+          </label>
+
+          <label
+            class="group relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 hover:border-gray-400 has-[:checked]:border-indigo-500 has-[:checked]:ring-2 has-[:checked]:ring-indigo-400/40"
+          >
+            <input
+              v-model="selectedTemplateKey"
+              type="radio"
+              name="dashboard-template"
+              value="impact-portfolio"
+              class="absolute inset-0 appearance-none"
+              @change="applyTemplate"
+            />
+
+            <div class="flex-1">
+              <div class="text-sm font-semibold text-gray-900">Impact measurement (portfolio)</div>
+              <div class="mt-1 text-sm text-gray-600">
+                Compares impact across projects, highlights top performers, and summarizes overall portfolio impact.
+              </div>
+            </div>
+
+            <CheckCircle class="invisible size-5 text-indigo-600 group-has-[:checked]:visible" aria-hidden="true" />
+          </label>
+        </div>
       </div>
 
       <!-- Model Selection -->
@@ -69,15 +105,15 @@
           </svg>
 
           <span v-if="loading">Processing...</span>
-          <span v-else>Test Run</span>
+          <span v-else>Ok, lets go</span>
         </button>
 
-        <button
+        <!-- <button
           class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
           @click="clearPrompt"
         >
           Clear
-        </button>
+        </button> -->
       </div>
     </div>
 
@@ -124,23 +160,27 @@ const selectedModelKey = ref('')
 
 const saveGeneratedReport = useForm({
   project_id: projectId,
-  is_automatic: 0,
+  is_automatic: 1,
   prompt: '',
   result: '',
   title: '',
   model_key: '', // optional: if you want to store it on save too
 })
 
-const LOCAL_PROMPT_KEY = (id) => `reportPrompt_${id}`
+const LOCAL_TEMPLATE_KEY = (id) => `reportPromptTemplate_${id}`
 
 const prompt = ref('')
+const selectedTemplateKey = ref('')
 const reportHtml = ref('')
 const reportName = ref('')
 const loading = ref(false)
 
 onMounted(() => {
-  const saved = localStorage.getItem(LOCAL_PROMPT_KEY(projectId))
-  if (saved) prompt.value = saved
+  const savedTemplate = localStorage.getItem(LOCAL_TEMPLATE_KEY(projectId))
+  if (savedTemplate) {
+    selectedTemplateKey.value = savedTemplate
+    prompt.value = savedTemplate
+  }
 
   // Default to first model key
   if (!selectedModelKey.value && modelList.value.length) {
@@ -148,24 +188,42 @@ onMounted(() => {
   }
 })
 
-function savePrompt() {
-  localStorage.setItem(LOCAL_PROMPT_KEY(projectId), prompt.value)
+function applyTemplate() {
+  if (!selectedTemplateKey.value) return
+
+  // Keep `prompt` as the selected template id for compatibility with existing backend payloads.
+  prompt.value = selectedTemplateKey.value
+  localStorage.setItem(LOCAL_TEMPLATE_KEY(projectId), selectedTemplateKey.value)
 }
 
 function clearPrompt() {
   prompt.value = ''
-  savePrompt()
+  selectedTemplateKey.value = ''
+  localStorage.removeItem(LOCAL_TEMPLATE_KEY(projectId))
 }
 
 async function testRun() {
+  if (!selectedTemplateKey.value) return
+
   loading.value = true
   try {
-    const response = await axios.post(`/projects/${projectId}/greports`, {
-      prompt: prompt.value,
+    const response = await axios.post(`/projects/${projectId}/autoreports`, {
+      // Send template id for auto dashboard generation
+      template_id: selectedTemplateKey.value,
+      // Keep `prompt` for backwards compatibility if backend still expects it
+      prompt: selectedTemplateKey.value,
       model_key: selectedModelKey.value, // <-- sends selected model key to server
       // If your backend expects `key` instead, rename to: key: selectedModelKey.value
     })
-    reportHtml.value = response.data.data
+
+    prompt.value = response?.data?.next_agent_prompt ?? ''
+
+    const resultPayload = response?.data?.result
+    const html =
+      (resultPayload && typeof resultPayload === 'object' && (resultPayload.data ?? resultPayload.html)) ??
+      (typeof resultPayload === 'string' ? resultPayload : '')
+
+    reportHtml.value = html
   } catch (error) {
     // handle error
   } finally {
@@ -178,9 +236,9 @@ function saveReport() {
   saveGeneratedReport.result = reportHtml.value
   saveGeneratedReport.title = reportName.value
   saveGeneratedReport.model_key = selectedModelKey.value
-  saveGeneratedReport.is_automatic = 0
+  saveGeneratedReport.is_automatic = 1
 
-  saveGeneratedReport.post(`/projects/${projectId}/sreports`, {
+  saveGeneratedReport.post(`/projects/${projectId}/sautoreports`, {
     onSuccess: () => {
       // Optionally show a success message or reset form
     },

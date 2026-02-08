@@ -63,11 +63,18 @@ Route::get('/projects/{project}/reports', [App\Http\Controllers\ReportController
     ->middleware(['auth', 'verified'])->name('projects.reports.index');
 Route::post('/projects/{project}/greports', [App\Http\Controllers\ReportController::class, 'create'])
     ->middleware(['auth', 'verified'])->name('projects.reports.create');
+Route::post('/projects/{project}/autoreports', [App\Http\Controllers\ReportController::class, 'autoCreate'])
+    ->middleware(['auth', 'verified'])->name('projects.autoreports.create');
 Route::post('/projects/{project}/sreports', [App\Http\Controllers\ReportController::class, 'store'])
     ->middleware(['auth', 'verified'])->name('projects.reports.store');
+Route::post('/projects/{project}/sautoreports', [App\Http\Controllers\ReportController::class, 'arstore'])
+    ->middleware(['auth', 'verified'])->name('projects.autoreports.store');
+    
 
 Route::get('/reports/{project}/create', [App\Http\Controllers\ReportController::class, 'createForm'])
     ->middleware(['auth', 'verified'])->name('reports.create');
+Route::get('/reports/{project}/autocreate', [App\Http\Controllers\ReportController::class, 'autoCreateForm'])
+    ->middleware(['auth', 'verified'])->name('reports.autocreate');
 Route::get('/reports/{uuid}', [App\Http\Controllers\ReportController::class, 'show'])->name('reports.show');
 Route::get('/reports/{report}/edit', [App\Http\Controllers\ReportController::class, 'edit'])
     ->middleware(['auth', 'verified'])->name('reports.edit');
