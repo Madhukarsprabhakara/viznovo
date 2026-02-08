@@ -45,7 +45,7 @@ services:
   irep_composer:
     build:
       context: .
-      dockerfile: php-dev.dockerfile
+      dockerfile: php-prod-us.dockerfile
     container_name: irep_composer
     volumes:
       - ./src:/var/www/html
