@@ -9,7 +9,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
 
 <template>
   <Head title="viznovo — Impact Measurement on autopilot using agents" />
-  <div class="min-h-screen bg-white text-slate-900">
+  <div class="min-h-screen flex flex-col bg-white text-slate-900">
     <!-- Top Navigation -->
     <div class="bg-white border-b border-slate-200">
       <div class="max-w-7xl mx-auto px-6 py-4">
@@ -27,21 +27,22 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
       </div>
     </div>
 
-    <!-- Hero -->
-    <header class="bg-gradient-to-b from-white to-slate-50">
-      <div class="max-w-7xl mx-auto px-6 py-8 lg:py-12">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
-          <!-- Main message (1/4) -->
-          <div class="lg:col-span-1">
-            <h2 class="text-2xl font-semibold text-slate-700">
-              Open-source impact measurement app that turns data into insights and insights into presentable dashboards in minutes.
-            </h2>
-          </div>
+    <main class="flex-1 flex flex-col justify-center">
+      <!-- Hero -->
+      <header class="bg-gradient-to-b from-white to-slate-50">
+        <div class="max-w-7xl mx-auto px-6 py-8 lg:py-12">
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
+            <!-- Main message (1/4) -->
+            <div class="lg:col-span-1">
+              <h2 class="text-2xl font-semibold text-slate-700">
+                Open-source impact measurement app that turns data into insights and insights into presentable dashboards in minutes.
+              </h2>
+            </div>
 
-          <!-- Animation (3/4) -->
-          <div class="lg:col-span-3 w-full overflow-hidden">
-            <div class="flex justify-center">
-              <div class="vzn-pipeline vzn-pipeline-h flex items-center gap-2 origin-center scale-[0.92] xl:scale-100" aria-label="Files are processed by three AI agents: discovery, cleanup, and insights; the third agent produces a designer-quality dashboard.">
+            <!-- Animation (3/4) -->
+            <div class="lg:col-span-3 w-full overflow-hidden">
+              <div class="flex justify-center">
+                <div class="vzn-pipeline vzn-pipeline-h flex items-center gap-2 origin-center scale-[0.92] xl:scale-100" aria-label="Files are processed by three AI agents: discovery, cleanup, and insights; the third agent produces a designer-quality dashboard.">
               <!-- Source files -->
               <div class="flex flex-col gap-2 w-56 shrink-0">
                 <div class="bg-white border-2 border-slate-200 rounded-lg p-3 shadow-md hover:shadow-lg transition vzn-float overflow-hidden">
@@ -181,32 +182,33 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                   </div>
                 </div>
               </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <!-- Private beta -->
-    <section class="bg-white">
-      <div class="max-w-7xl mx-auto px-6 py-8">
-        <div class="flex flex-col items-center justify-center gap-4 text-center">
-          <p class="text-slate-700">
-            We are in private beta at the moment. Get in touch by filling up this form.
-          </p>
+      <!-- Private beta -->
+      <section class="bg-white">
+        <div class="max-w-7xl mx-auto px-6 py-8">
+          <div class="flex flex-col items-center justify-center gap-4 text-center">
+            <p class="text-slate-700">
+              We are in private beta at the moment. Get in touch by filling up this form.
+            </p>
 
-          <a
-            href="https://docs.google.com/forms/d/e/1FAIpQLSf9YpuofIBY6C53vVstDeoS0mO1GhlUIDaVCXK5NL_nrAKudQ/viewform?usp=publish-editor"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center justify-center px-6 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
-          >
-            Get in touch
-          </a>
+            <a
+              href="https://docs.google.com/forms/d/e/1FAIpQLSf9YpuofIBY6C53vVstDeoS0mO1GhlUIDaVCXK5NL_nrAKudQ/viewform?usp=publish-editor"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center justify-center px-6 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
+            >
+              Get in touch
+            </a>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
     
 
