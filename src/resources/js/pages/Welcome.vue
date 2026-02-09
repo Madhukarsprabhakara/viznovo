@@ -194,7 +194,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
         <div class="max-w-7xl mx-auto px-6 py-8">
           <div class="flex flex-col items-center justify-center gap-4 text-center">
             <p class="text-slate-700">
-              We are in private beta at the moment. Get in touch by filling up this form.
+              We are in private beta at the moment. If you already have an email invite, respond to that email. If you don't have an invite but would like to join, please fill out the form linked below and we'll be in touch!
             </p>
 
             <a
