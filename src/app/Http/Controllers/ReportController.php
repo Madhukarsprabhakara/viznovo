@@ -168,9 +168,12 @@ class ReportController extends Controller
             // File discovery
             // create dashboard based on the insights from file discovery agent
             $response = (new DiscoverFiles)
-                ->prompt('Here are the files and its contents...\n\n' . $jsonData);
+                ->prompt('Here are the files and its contents...\n\n' . $jsonData,
+                          provider: ['gemini','openai'],
+                );
+            
             $resp_array = json_decode($response, true);
-
+            // return $resp_array['next_agent_prompt'];
             $nextAgentPrompt = $resp_array['next_agent_prompt'] ?? null;
             if (!$nextAgentPrompt) {
                 return response()->json([

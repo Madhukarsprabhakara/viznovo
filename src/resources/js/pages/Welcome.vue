@@ -194,17 +194,29 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
         <div class="max-w-7xl mx-auto px-6 py-8">
           <div class="flex flex-col items-center justify-center gap-4 text-center">
             <p class="text-slate-700">
-              We are in private beta at the moment. If you already have an email invite, respond to that email. If you don't have an invite but would like to join, please fill out the form linked below and we'll be in touch!
+              We are in private beta at the moment. If you already have an email invite, respond to that email. If you don't have an invite but would like to join, please fill out the form linked below and we'll be in touch. And while you are here don't forget to download the Impact Measurement in the Age of AI book!
             </p>
 
-            <a
-              href="https://docs.google.com/forms/d/e/1FAIpQLSf9YpuofIBY6C53vVstDeoS0mO1GhlUIDaVCXK5NL_nrAKudQ/viewform?usp=publish-editor"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center justify-center px-6 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
-            >
-              Get in touch
-            </a>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+              <a
+                href="https://docs.google.com/forms/d/e/1FAIpQLSf9YpuofIBY6C53vVstDeoS0mO1GhlUIDaVCXK5NL_nrAKudQ/viewform?usp=publish-editor"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center justify-center px-6 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
+              >
+                Get in touch
+              </a>
+
+              <a
+                href="https://madhukarsp.gumroad.com/l/immbook"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md border border-slate-300 bg-white text-slate-900 hover:bg-slate-50 font-medium"
+              >
+                <ExternalLink class="w-4 h-4 text-slate-700" aria-hidden="true" />
+                Download Impact Measurement Book
+              </a>
+            </div>
           </div>
         </div>
       </section>

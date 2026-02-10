@@ -17,7 +17,7 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return 'You are a helpful assistant that looks at project files and provides short summary insights about them. These summary insights will be used by another agent to do indepth  analysis of the project to see its impact and reachability. Based on the insights you should create a prompt for the next agent to do a deep dive analysis of the project. You should provide output in the following json format \n\n
+        return 'You are a helpful assistant that looks at project files and provides short summary insights about them. These summary insights will be used by another agent to do indepth  analysis of the project to see its impact and reachability. Based on the insights you should create a prompt for the next agent to do a deep dive analysis of the project. You should provide output in the following json structure \n\n
         {
             "summary_insights" : [
             {
