@@ -35,14 +35,15 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
             <!-- Main message (1/4) -->
             <div class="lg:col-span-1">
               <h2 class="text-2xl font-semibold text-slate-700">
-                Open-source impact measurement app that turns data into insights and insights into presentable dashboards in minutes.
+                Open-source, agentic impact measurement app that turns data into insights and insights into presentable dashboards in minutes.
               </h2>
             </div>
 
             <!-- Animation (3/4) -->
-            <div class="lg:col-span-3 w-full overflow-hidden">
-              <div class="flex justify-center">
-                <div class="vzn-pipeline vzn-pipeline-h flex items-center gap-2 origin-center scale-[0.92] xl:scale-100" aria-label="Files are processed by three AI agents: discovery, cleanup, and insights; the third agent produces a designer-quality dashboard.">
+            <div class="lg:col-span-3 w-full">
+              <div class="rounded-2xl border border-slate-300 bg-slate-200/70 p-4 sm:p-5 overflow-hidden">
+                <div class="flex justify-center">
+                  <div class="vzn-pipeline vzn-pipeline-h flex items-center gap-2 origin-center scale-[0.92] xl:scale-100" aria-label="Files are processed by three AI agents: discovery, cleanup, and insights; the third agent produces a designer-quality dashboard.">
               <!-- Source files -->
               <div class="flex flex-col gap-2 w-56 shrink-0">
                 <div class="bg-white border-2 border-slate-200 rounded-lg p-3 shadow-md hover:shadow-lg transition vzn-float overflow-hidden">
@@ -182,6 +183,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                   </div>
                 </div>
               </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -48,7 +48,7 @@ services:
       - ./src:/var/www/html
     entrypoint: ["composer"]
     working_dir: /var/www/html
-    restart: always
+   
     networks:
       - irep
   irep_artisan:
