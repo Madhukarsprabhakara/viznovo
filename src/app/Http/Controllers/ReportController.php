@@ -325,10 +325,16 @@ class ReportController extends Controller
                     try {
                         $chromePath = $this->resolveChromeExecutablePath();
 
+                        $timeoutSeconds = (int) env('BROWSERSHOT_TIMEOUT', 90);
+                        $delayMs = (int) env('BROWSERSHOT_JS_DELAY_MS', 2000);
+
                         $browsershot = Browsershot::url($file->url)
                             ->noSandbox()
                             ->setNodeBinary(env('BROWSERSHOT_NODE_BINARY', '/usr/bin/node'))
                             ->setNpmBinary(env('BROWSERSHOT_NPM_BINARY', '/usr/bin/npm'))
+                            ->timeout($timeoutSeconds)
+                            ->waitUntilNetworkIdle()
+                            ->setDelay($delayMs)
                             ->setNodeEnv([
                                 'HOME' => '/tmp',
                                 'XDG_CACHE_HOME' => '/tmp',
@@ -372,7 +378,7 @@ class ReportController extends Controller
             $response = (new CustomResearch)
                 ->prompt(
                     'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                    provider: ['gemini'],
+                    provider: ['gemini', 'openai'],
                     timeout: 600,
                 );
             $decoded = json_decode($response, true); // true => associative arrays
