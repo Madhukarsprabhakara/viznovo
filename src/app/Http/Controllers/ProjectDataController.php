@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProjectData;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProjectDataController extends Controller
 {
@@ -64,8 +65,14 @@ class ProjectDataController extends Controller
         try {
             // Delete the file from storage if it exists
            
-            if ($projectData->url && \Storage::exists($projectData->url)) {
-                \Storage::delete($projectData->url);
+            if (
+                $projectData->url &&
+                $projectData->type !== 'website' &&
+                !str_starts_with($projectData->url, 'http://') &&
+                !str_starts_with($projectData->url, 'https://') &&
+                Storage::exists($projectData->url)
+            ) {
+                Storage::delete($projectData->url);
             }
             $projectData->delete();
             return back(303);

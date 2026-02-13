@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3'
 import { login, register, home } from '@/routes'
-import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircle, ExternalLink } from 'lucide-vue-next'
+import { FileText, FileSpreadsheet, Globe, Sparkles, BarChart3, AlertCircle, CheckCircle, ExternalLink } from 'lucide-vue-next'
 import AppLogoIcon from '@/components/AppLogoIcon.vue'
 
 
@@ -9,7 +9,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
 
 <template>
   <Head title="viznovo — Impact Measurement on autopilot using agents" />
-  <div class="min-h-screen bg-white text-slate-900">
+  <div class="min-h-screen flex flex-col bg-white text-slate-900">
     <!-- Top Navigation -->
     <div class="bg-white border-b border-slate-200">
       <div class="max-w-7xl mx-auto px-6 py-4">
@@ -27,21 +27,23 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
       </div>
     </div>
 
-    <!-- Hero -->
-    <header class="bg-gradient-to-b from-white to-slate-50">
-      <div class="max-w-7xl mx-auto px-6 py-8 lg:py-12">
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
-          <!-- Main message (1/4) -->
-          <div class="lg:col-span-1">
-            <h2 class="text-2xl font-semibold text-slate-700">
-              Open-source impact measurement app that turns data into insights and insights into presentable dashboards in minutes.
-            </h2>
-          </div>
+    <main class="flex-1 flex flex-col justify-center">
+      <!-- Hero -->
+      <header class="bg-gradient-to-b from-white to-slate-50">
+        <div class="max-w-7xl mx-auto px-6 py-8 lg:py-12">
+          <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-center">
+            <!-- Main message (1/4) -->
+            <div class="lg:col-span-1">
+              <h2 class="text-2xl font-semibold text-slate-700">
+                Open-source, agentic qualitative research and data analysis app that makes research and presentation of research from a variety of sources a child&apos;s play.
+              </h2>
+            </div>
 
-          <!-- Animation (3/4) -->
-          <div class="lg:col-span-3 w-full overflow-hidden">
-            <div class="flex justify-center">
-              <div class="vzn-pipeline vzn-pipeline-h flex items-center gap-2 origin-center scale-[0.92] xl:scale-100" aria-label="Files are processed by three AI agents: discovery, cleanup, and insights; the third agent produces a designer-quality dashboard.">
+            <!-- Animation (3/4) -->
+            <div class="lg:col-span-3 w-full">
+              <div class="rounded-2xl border border-slate-300 bg-slate-200/70 p-4 sm:p-5 overflow-hidden">
+                <div class="flex justify-center">
+                  <div class="vzn-pipeline vzn-pipeline-h flex items-center gap-2 origin-center scale-[0.92] xl:scale-100" aria-label="Files are processed by three AI agents: discovery, cleanup, and insights; the third agent produces a designer-quality dashboard.">
               <!-- Source files -->
               <div class="flex flex-col gap-2 w-56 shrink-0">
                 <div class="bg-white border-2 border-slate-200 rounded-lg p-3 shadow-md hover:shadow-lg transition vzn-float overflow-hidden">
@@ -66,10 +68,10 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
 
                 <div class="bg-white border-2 border-slate-200 rounded-lg p-3 shadow-md hover:shadow-lg transition vzn-float vzn-float-delay overflow-hidden">
                   <div class="flex items-center gap-3">
-                    <FileSpreadsheet class="w-7 h-7 text-green-600 flex-shrink-0" />
+                    <Globe class="w-7 h-7 text-indigo-600 flex-shrink-0" />
                     <div class="min-w-0">
-                      <div class="font-semibold text-sm truncate">Revenue_Data.csv</div>
-                      <div class="text-xs text-slate-500 truncate">Monthly revenue breakdown</div>
+                      <div class="font-semibold text-sm truncate">tesla.com/esg</div>
+                      <div class="text-xs text-slate-500 truncate">Website data analysis</div>
                     </div>
                   </div>
                 </div>
@@ -103,7 +105,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                       <Sparkles class="w-4 h-4 text-indigo-600 flex-shrink-0" />
                       <div class="min-w-0">
                         <div class="font-semibold text-sm text-slate-900 leading-snug">Discovery</div>
-                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Understands each file</div>
+                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Understands each data source</div>
                       </div>
                     </div>
                   </div>
@@ -137,7 +139,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                       <Sparkles class="w-4 h-4 text-indigo-600 flex-shrink-0" />
                       <div class="min-w-0">
                         <div class="font-semibold text-sm text-slate-900 leading-snug">Insights</div>
-                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Builds the dashboard</div>
+                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Builds the presentation dashboard</div>
                       </div>
                     </div>
                   </div>
@@ -154,7 +156,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
               <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 shadow-2xl vzn-dashboard w-96 shrink-0">
                 <div class="flex items-center gap-2 mb-3">
                   <BarChart3 class="w-5 h-5 text-white" />
-                  <div class="text-white font-semibold text-sm">Designer-quality Dashboard</div>
+                  <div class="text-white font-semibold text-sm">Research presentation</div>
                 </div>
 
                 <div class="bg-white/10 backdrop-blur rounded-lg p-3 space-y-3">
@@ -181,32 +183,46 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                   </div>
                 </div>
               </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
 
-    <!-- Private beta -->
-    <section class="bg-white">
-      <div class="max-w-7xl mx-auto px-6 py-8">
-        <div class="flex flex-col items-center justify-center gap-4 text-center">
-          <p class="text-slate-700">
-            We are in private beta at the moment. Get in touch by filling up this form.
-          </p>
+      <!-- Private beta -->
+      <section class="bg-white">
+        <div class="max-w-7xl mx-auto px-6 py-8">
+          <div class="flex flex-col items-center justify-center gap-4 text-center">
+            <p class="text-slate-700">
+              We are in private beta at the moment. If you already have an email invite, respond to that email. If you don't have an invite but would like to join, please fill out the form linked below and we'll be in touch. And while you are here don't forget to download the Impact Measurement in the Age of AI book!
+            </p>
 
-          <a
-            href="https://docs.google.com/forms/d/e/1FAIpQLSf9YpuofIBY6C53vVstDeoS0mO1GhlUIDaVCXK5NL_nrAKudQ/viewform?usp=publish-editor"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center justify-center px-6 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
-          >
-            Get in touch
-          </a>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+              <a
+                href="https://docs.google.com/forms/d/e/1FAIpQLSf9YpuofIBY6C53vVstDeoS0mO1GhlUIDaVCXK5NL_nrAKudQ/viewform?usp=publish-editor"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center justify-center px-6 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
+              >
+                Get in touch
+              </a>
+
+              <a
+                href="https://madhukarsp.gumroad.com/l/immbook"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md border border-slate-300 bg-white text-slate-900 hover:bg-slate-50 font-medium"
+              >
+                <ExternalLink class="w-4 h-4 text-slate-700" aria-hidden="true" />
+                Download Impact Measurement Book
+              </a>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
     
 

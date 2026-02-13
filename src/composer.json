@@ -18,6 +18,7 @@
         "laravel/wayfinder": "^0.1.9",
         "league/csv": "^9.24.1",
         "openai-php/client": "^0.16.1",
+        "spatie/browsershot": "^5.2",
         "spatie/pdf-to-text": "^1.54"
     },
     "require-dev": {

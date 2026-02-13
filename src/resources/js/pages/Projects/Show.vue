@@ -4,12 +4,17 @@ import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
-import { ref, onMounted, defineProps } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
 import UploadFile from './Partials/UploadFile.vue';
+import AddUrl from './Partials/AddUrl.vue';
 import FilesList from './Partials/FilesList.vue';
 import ActionTabs from './Partials/ActionTabs.vue';
-const props = defineProps({ project: Object })
+
+const { project, files } = defineProps<{
+    project: any
+    files: any[]
+}>()
 
 
 const breadcrumbs = ref<BreadcrumbItem[]>([
@@ -34,8 +39,8 @@ onMounted(() => {
     cardCollapsed.value = stored === '1' ? true : false;
 
     breadcrumbs.value.push({
-        title: props.project.name,
-        href: '/projects/' + props.project.id, // Use Ziggy route helper if available
+        title: project.name,
+        href: '/projects/' + project.id, // Use Ziggy route helper if available
     });
 
 });
@@ -58,7 +63,7 @@ onMounted(() => {
                         :class="cardCollapsed ? 'h-20 overflow-hidden' : ''">
                         <div class="flex items-center justify-between">
                             <div>
-                                <div class="font-semibold text-lg">{{ project.name }} -- File Uploads</div>
+                                <div class="font-semibold text-lg">{{ project.name }} -- File Uploads & URL Entries</div>
                                 <div class="text-xs text-gray-400 mt-1">Supported formats: CSV, and PDF only.</div>
                             </div>
 
@@ -72,13 +77,16 @@ onMounted(() => {
                         <div v-if="!cardCollapsed" class="mt-3">
                             <!-- Card content goes here -->
                             <UploadFile :project_id="project.id" />
+
+                            <div class="my-4 text-xs text-gray-400"></div>
+                            <AddUrl :project_id="project.id" />
                         </div>
                     </div>
                 </div>
 
                 <div class="mb-2">
                     <div class="rounded-xl border border-sidebar-border/70 bg-white dark:bg-gray-900 shadow p-4 transition-all duration-300">
-                    <FilesList :files="project.files" />
+                    <FilesList :files="files" />
                     </div>
 
                 </div>

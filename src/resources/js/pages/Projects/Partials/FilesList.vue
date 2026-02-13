@@ -1,12 +1,12 @@
 <template>
   <div class="mt-1">
-    <h2 class="text-lg font-semibold mb-2">Uploaded Files</h2>
+    <h2 class="text-lg font-semibold mb-2">Sources</h2>
     <ul v-if="files && files.length" class="space-y-2">
       <li v-for="file in files" :key="file.id" class="flex items-center space-x-2">
         
           {{ file.name }}
         
-        <span class="text-xs text-gray-400"> ({{ file.type }} )</span>
+        <span v-if="file.type" class="text-xs text-gray-400"> ({{ file.type }} )</span>
         <button
           @click="deleteFile(file.id)"
           class="ml-2 text-red-500 hover:text-red-700 text-xs font-bold"

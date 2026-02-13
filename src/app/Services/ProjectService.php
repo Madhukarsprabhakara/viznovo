@@ -50,4 +50,20 @@ class ProjectService
         // 3. Return the path or any other info if needed
         return $projectData;
     }
+
+    public function handleUrlSource(Project $project, string $url)
+    {
+        $normalizedUrl = trim($url);
+
+        $projectData = new ProjectData();
+        $projectData->user_id = auth()->id();
+        $projectData->project_id = $project->id;
+        $projectData->name = $normalizedUrl;
+        $projectData->system_name = 'url_' . substr(sha1($normalizedUrl), 0, 16);
+        $projectData->type = 'website';
+        $projectData->url = $normalizedUrl;
+        $projectData->save();
+
+        return $projectData;
+    }
 }
