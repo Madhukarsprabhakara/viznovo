@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ReadCsvController;
+use App\Ai\Agents\WebResearch;
 //Live deploy
 ini_set('max_execution_time', 1200);
 
@@ -17,6 +18,15 @@ Route::get('/arpitha', function () {
     sleep(500);
     return phpinfo();
 })->name('arpitha');
+Route::get('/webfetch', function () {
+    return $response = (new WebResearch)
+                ->prompt('Website URL: https://viznovo.com/    \n\n',
+                          provider: ['gemini'],
+                );
+            
+            $resp_array = json_decode($response, true);
+            return $resp_array;
+})->name('test');
 Route::get('dashboard', function () {
     return redirect()->route('projects.index');
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -55,6 +65,9 @@ Route::get('/projects/{project}', [App\Http\Controllers\ProjectController::class
 
 Route::post('/projects/{project}/upload', [App\Http\Controllers\ProjectController::class, 'upload'])
     ->middleware(['auth', 'verified'])->name('projects.upload');
+
+Route::post('/projects/{project}/add-url', [App\Http\Controllers\ProjectController::class, 'addUrl'])
+    ->middleware(['auth', 'verified'])->name('projects.addUrl');
 
 Route::delete('/projectdata/{projectData}', [App\Http\Controllers\ProjectDataController::class, 'destroy'])
     ->middleware(['auth', 'verified'])->name('projectdata.destroy');  

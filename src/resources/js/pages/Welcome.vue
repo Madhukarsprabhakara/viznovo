@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3'
 import { login, register, home } from '@/routes'
-import { FileText, FileSpreadsheet, Sparkles, BarChart3, AlertCircle, CheckCircle, ExternalLink } from 'lucide-vue-next'
+import { FileText, FileSpreadsheet, Globe, Sparkles, BarChart3, AlertCircle, CheckCircle, ExternalLink } from 'lucide-vue-next'
 import AppLogoIcon from '@/components/AppLogoIcon.vue'
 
 
@@ -35,7 +35,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
             <!-- Main message (1/4) -->
             <div class="lg:col-span-1">
               <h2 class="text-2xl font-semibold text-slate-700">
-                Open-source, agentic impact measurement app that turns data into insights and insights into presentable dashboards in minutes.
+                Open-source, agentic qualitative research and data analysis app that makes research and presentation of research from a variety of sources a child&apos;s play.
               </h2>
             </div>
 
@@ -68,10 +68,10 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
 
                 <div class="bg-white border-2 border-slate-200 rounded-lg p-3 shadow-md hover:shadow-lg transition vzn-float vzn-float-delay overflow-hidden">
                   <div class="flex items-center gap-3">
-                    <FileSpreadsheet class="w-7 h-7 text-green-600 flex-shrink-0" />
+                    <Globe class="w-7 h-7 text-indigo-600 flex-shrink-0" />
                     <div class="min-w-0">
-                      <div class="font-semibold text-sm truncate">Revenue_Data.csv</div>
-                      <div class="text-xs text-slate-500 truncate">Monthly revenue breakdown</div>
+                      <div class="font-semibold text-sm truncate">tesla.com/esg</div>
+                      <div class="text-xs text-slate-500 truncate">Website data analysis</div>
                     </div>
                   </div>
                 </div>
@@ -105,7 +105,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                       <Sparkles class="w-4 h-4 text-indigo-600 flex-shrink-0" />
                       <div class="min-w-0">
                         <div class="font-semibold text-sm text-slate-900 leading-snug">Discovery</div>
-                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Understands each file</div>
+                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Understands each data source</div>
                       </div>
                     </div>
                   </div>
@@ -139,7 +139,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                       <Sparkles class="w-4 h-4 text-indigo-600 flex-shrink-0" />
                       <div class="min-w-0">
                         <div class="font-semibold text-sm text-slate-900 leading-snug">Insights</div>
-                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Builds the dashboard</div>
+                        <div class="mt-0.5 text-[11px] text-slate-600 leading-snug">Builds the presentation dashboard</div>
                       </div>
                     </div>
                   </div>
@@ -156,7 +156,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
               <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 shadow-2xl vzn-dashboard w-96 shrink-0">
                 <div class="flex items-center gap-2 mb-3">
                   <BarChart3 class="w-5 h-5 text-white" />
-                  <div class="text-white font-semibold text-sm">Designer-quality Dashboard</div>
+                  <div class="text-white font-semibold text-sm">Research presentation</div>
                 </div>
 
                 <div class="bg-white/10 backdrop-blur rounded-lg p-3 space-y-3">

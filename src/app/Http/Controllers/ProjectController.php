@@ -104,6 +104,7 @@ class ProjectController extends Controller
     {
         //
         try {
+            
             $project->delete();
             return redirect()->route('projects.index')->with('success', 'Project deleted successfully.');
         } catch (\Exception $e) {
@@ -131,6 +132,21 @@ class ProjectController extends Controller
             return redirect()->route('projects.show', $project)->with('success', 'File uploaded successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to upload file: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    public function addUrl(Request $request, Project $project, ProjectService $projectService)
+    {
+        try {
+            $validated = $request->validate([
+                'url' => ['required', 'string', 'max:2048', 'url'],
+            ]);
+
+            $projectService->handleUrlSource($project, $validated['url']);
+
+            return redirect()->route('projects.show', $project)->with('success', 'URL added successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['url' => 'Failed to add URL: ' . $e->getMessage()])->withInput();
         }
     }
 }

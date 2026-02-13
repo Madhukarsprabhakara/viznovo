@@ -6,6 +6,17 @@ ADD ./src/ /var/www/html
 ADD ./php/php-custom.ini  /usr/local/etc/php/conf.d/php-custom.ini
 RUN apk update
 
+# Browsershot/Puppeteer runtime deps (system Chromium + fonts)
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ttf-freefont \
+    ca-certificates
+
+RUN mkdir -p /tmp/puppeteer && chmod -R 777 /tmp/puppeteer
+
 RUN chmod -R 777 /var/www/html/storage
 RUN chmod -R 777 /var/www/html/bootstrap/cache
 

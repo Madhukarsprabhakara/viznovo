@@ -13,11 +13,35 @@ use App\Models\AIModel;
 use League\Csv\Reader;
 use League\Csv\Statement;
 use App\Ai\Agents\DiscoverFiles;
-use App\Ai\Agents\DiscoverFilesStructured;
+use App\Ai\Agents\CustomResearch;
+use Spatie\Browsershot\Browsershot;
+
 use Illuminate\Support\Facades\Auth;
 
 class ReportController extends Controller
 {
+    private function resolveChromeExecutablePath(): ?string
+    {
+        $candidates = [
+            env('BROWSERSHOT_CHROME_PATH'),
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/google-chrome',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
+            if (is_file($candidate) && is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -99,6 +123,7 @@ class ReportController extends Controller
 
             $pdfContentArr = [];
             $csvContentArr = [];
+            $websiteContentArr = [];
             foreach ($allFiles as $file) {
                 if ($file->type === 'application/pdf') {
                     // Adjust the disk and path as per your storage setup
@@ -153,6 +178,12 @@ class ReportController extends Controller
                         'csv_data' => $records,
                     ];
                 }
+
+                if ($file->type === 'website') {
+                    $websiteContentArr[] = [
+                        'website_url' => $file->url,
+                    ];
+                }
             }
 
 
@@ -161,19 +192,22 @@ class ReportController extends Controller
             $input_data = [
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
+                'website_urls' => $websiteContentArr,
             ];
 
 
             $jsonData = json_encode($input_data);
+
             // File discovery
             // create dashboard based on the insights from file discovery agent
             $response = (new DiscoverFiles)
-                ->prompt('Here are the files and its contents...\n\n' . $jsonData,
-                          provider: ['gemini','openai'],
+                ->prompt(
+                    'Here are the files and its contents...\n\n' . $jsonData,
+                    provider: ['gemini', 'openai'],
                 );
-            
+
             $resp_array = json_decode($response, true);
-            // return $resp_array['next_agent_prompt'];
+
             $nextAgentPrompt = $resp_array['next_agent_prompt'] ?? null;
             if (!$nextAgentPrompt) {
                 return response()->json([
@@ -203,7 +237,6 @@ class ReportController extends Controller
                 'next_agent_prompt' => $nextAgentPrompt,
                 'result' => $result,
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
@@ -228,6 +261,7 @@ class ReportController extends Controller
             $result = null;
             $pdfContentArr = [];
             $csvContentArr = [];
+            $websiteContentArr = [];
             foreach ($allFiles as $file) {
                 if ($file->type === 'application/pdf') {
                     // Adjust the disk and path as per your storage setup
@@ -282,6 +316,36 @@ class ReportController extends Controller
                         'csv_data' => $records,
                     ];
                 }
+
+                if ($file->type === 'website') {
+                    $websiteItem = [
+                        'website_url' => $file->url,
+                    ];
+
+                    try {
+                        $chromePath = $this->resolveChromeExecutablePath();
+
+                        $browsershot = Browsershot::url($file->url)
+                            ->noSandbox()
+                            ->setNodeBinary(env('BROWSERSHOT_NODE_BINARY', '/usr/bin/node'))
+                            ->setNpmBinary(env('BROWSERSHOT_NPM_BINARY', '/usr/bin/npm'))
+                            ->setNodeEnv([
+                                'HOME' => '/tmp',
+                                'XDG_CACHE_HOME' => '/tmp',
+                                'PUPPETEER_CACHE_DIR' => '/tmp/puppeteer',
+                            ]);
+
+                        if ($chromePath) {
+                            $browsershot->setChromePath($chromePath);
+                        }
+
+                        $websiteItem['website_html'] = $browsershot->bodyHtml();
+                    } catch (\Throwable $e) {
+                        $websiteItem['website_error'] = $e->getMessage();
+                    }
+
+                    $websiteContentArr[] = $websiteItem;
+                }
             }
 
 
@@ -290,9 +354,11 @@ class ReportController extends Controller
             $input_data = [
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
+                'website_urls' => $websiteContentArr,
             ];
 
 
+            // return response()->json($input_data);
             $jsonData = json_encode($input_data);
             // File discovery
             // create dashboard based on the insights from file discovery agent
@@ -303,6 +369,19 @@ class ReportController extends Controller
 
             $prompt = $request->input('prompt');
 
+            $response = (new CustomResearch)
+                ->prompt(
+                    'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                    provider: ['gemini'],
+                    timeout: 600,
+                );
+            $decoded = json_decode($response, true); // true => associative arrays
+            $promptResponse = $decoded[0]['prompt_response'] ?? null;
+            return [
+                'status' => 'success',
+                'message' => 'Response generated successfully.',
+                'data' => $promptResponse,
+            ];
             if ($request->model_key == 'gpt-5') {
                 $result = $aiService->getOpenAIReport($prompt, $jsonData);
             }

@@ -6,6 +6,7 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
+use Laravel\Ai\Providers\Tools\WebFetch;
 use Stringable;
 
 class DiscoverFiles implements Agent, Conversational, HasTools
@@ -17,7 +18,7 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return 'You are a helpful assistant that looks at project files and provides short summary insights about them. These summary insights will be used by another agent to do indepth  analysis of the project to see its impact and reachability. Based on the insights you should create a prompt for the next agent to do a deep dive analysis of the project. Format the prompt using markdown. You should provide output in the following json structure \n\n
+        return 'You are a helpful assistant that looks at project files and urls and provides short summary insights about them. These summary insights will be used by another agent to do indepth  analysis of the project to see its impact and reachability. Based on the insights you should create a prompt for the next agent to do a deep dive analysis of the project. Format the prompt using markdown. You should provide output in the following json structure \n\n
         {
             "summary_insights" : [
             {
@@ -27,6 +28,14 @@ class DiscoverFiles implements Agent, Conversational, HasTools
             {
             "file_name": "file_2",
             "summary": "summary of file_2"
+            },
+            {
+            "url": "url_1",
+            "summary": "summary of url_1"
+            },
+            {
+            "url": "url_2",
+            "summary": "summary of url_2"
             }
             ],
             "next_agent_prompt": "prompt for the next agent to do deep dive analysis of the project based on the insights"
@@ -51,6 +60,8 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function tools(): iterable
     {
-        return [];
+        return [
+            new WebFetch,
+        ];
     }
 }

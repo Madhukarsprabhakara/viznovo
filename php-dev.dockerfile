@@ -5,6 +5,17 @@ RUN mkdir -p /var/www/html
 
 RUN apk update
 
+# Browsershot/Puppeteer runtime deps (system Chromium + fonts)
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ttf-freefont \
+    ca-certificates
+
+RUN mkdir -p /tmp/puppeteer && chmod -R 777 /tmp/puppeteer
+
 # install node and npm (Alpine packages)
 RUN apk add --no-cache nodejs npm
 
