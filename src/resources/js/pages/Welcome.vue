@@ -8,7 +8,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
 </script>
 
 <template>
-  <Head title="viznovo — Impact Measurement on autopilot using agents" />
+  <Head title="viznovo — Qualitative research and data analysis using ai agents" />
   <div class="min-h-screen flex flex-col bg-white text-slate-900">
     <!-- Top Navigation -->
     <div class="bg-white border-b border-slate-200">
