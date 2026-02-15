@@ -235,6 +235,7 @@ class ReportController extends Controller
                 ->prompt(
                     'Here are the files and its contents...\n\n' . $jsonData,
                     provider: ['gemini'],
+                    model: 'gemini-3-pro-preview',
                     timeout: 600,
                 );
 
@@ -244,6 +245,7 @@ class ReportController extends Controller
                 ->prompt(
                     'Here are the summary of the file and url contents...\n\n' . $discovery_string,
                     provider: ['gemini'],
+                    model: 'gemini-3-pro-preview',
                     timeout: 600,
                 );
             $prompt_array = json_decode($prompt_dd, true);
@@ -423,21 +425,33 @@ class ReportController extends Controller
 
             // return response()->json($input_data);
             $jsonData = json_encode($input_data);
-            // File discovery
-            // create dashboard based on the insights from file discovery agent
-            // $response = (new DiscoverFiles)
-            //     ->prompt('Here are the files and its contents...\n\n' . $jsonData);
-            // $resp_array = json_decode($response, true);
-            // return $resp_array['next_agent_prompt'];
+            
 
             $prompt = $request->input('prompt');
 
-            $response = (new CustomResearch)
+            if ($request->model_key == 'gpt-5') {
+                $response = (new CustomResearch)
                 ->prompt(
                     'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                    provider: ['gemini', 'openai'],
+                    provider: [
+                        'openai' => 'gpt-5.2',
+                        'gemini' => 'gemini-3-pro-preview',
+                    ],
                     timeout: 600,
                 );
+            }
+            if ($request->model_key == 'gemini-3-pro') {
+                $response = (new CustomResearch)
+                ->prompt(
+                    'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                    provider: [
+                        'gemini' => 'gemini-3-pro-preview',
+                        'openai' => 'gpt-5.2',
+                    ],
+                    timeout: 600,
+                );
+            }
+            
             $decoded = json_decode($response, true); // true => associative arrays
             $promptResponse = $decoded[0]['prompt_response'] ?? null;
             return [
@@ -445,16 +459,9 @@ class ReportController extends Controller
                 'message' => 'Response generated successfully.',
                 'data' => $promptResponse,
             ];
-            if ($request->model_key == 'gpt-5') {
-                $result = $aiService->getOpenAIReport($prompt, $jsonData);
-            }
-            if ($request->model_key == 'gemini-3-pro') {
-                $result = $aiService->getGeminiAI($prompt, $jsonData);
-            }
+            
 
             // 
-            return $result;
-            // return response()->json($result);
 
         } catch (\Exception $e) {
             return response()->json([
