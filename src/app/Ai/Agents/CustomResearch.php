@@ -55,7 +55,7 @@ class CustomResearch implements Agent, Conversational, HasTools
                         }
                     ]
 
-       - Provide me a well designed HTML page.
+       - Provide me a well designed dashboard in HTML.
 
        - I am using tailwindcss. 
 
@@ -69,7 +69,9 @@ class CustomResearch implements Agent, Conversational, HasTools
 
        - DO NOT use script or style tags.
 
-       - Make it visually appealing.';
+       - Make it visually appealing.
+       
+       - Use colors, blocks, spacing, and typography to enhance the design.';
     }
 
     /**

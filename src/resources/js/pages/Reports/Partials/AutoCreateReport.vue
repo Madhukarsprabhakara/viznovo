@@ -111,6 +111,10 @@
       </div>
 
       <!-- Actions -->
+      <div v-if="errorMessage" class="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800 whitespace-pre-wrap">
+        {{ errorMessage }}
+      </div>
+
       <div class="w-full bg-white p-4 border-t flex gap-2 z-10 mt-4">
         <button
           class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
@@ -198,6 +202,23 @@ const selectedTemplateKey = ref('')
 const reportHtml = ref('')
 const reportName = ref('')
 const loading = ref(false)
+const errorMessage = ref('')
+
+function maybeAddContextWindowTip(message) {
+  if (!message || typeof message !== 'string') return message
+
+  const isContextWindowError = /exceeds the context window/i.test(message)
+  if (!isContextWindowError) return message
+
+  const selectedKey = String(selectedModelKey.value ?? '')
+  const isGpt5 = selectedKey === 'gpt-5'
+  if (!isGpt5) return message
+
+  const geminiOption = modelList.value.find((m) => String(m?.key ?? '').toLowerCase().includes('gemini'))
+  const geminiLabel = geminiOption?.name || geminiOption?.key || 'Gemini'
+
+  return `${message}\n\nTip: You're using gpt-5 (smaller context window). Try switching to ${geminiLabel} and run again.`
+}
 
 onMounted(() => {
   const savedTemplate = localStorage.getItem(LOCAL_TEMPLATE_KEY(projectId))
@@ -230,6 +251,7 @@ async function testRun() {
   if (!selectedTemplateKey.value) return
 
   loading.value = true
+  errorMessage.value = ''
   try {
     const response = await axios.post(`/projects/${projectId}/autoreports`, {
       // Send template id for auto dashboard generation
@@ -253,7 +275,24 @@ async function testRun() {
 
     reportHtml.value = html
   } catch (error) {
-    // handle error
+    const responseData = error?.response?.data
+
+    let message = responseData?.message ?? responseData?.error ?? null
+
+    if (!message && responseData?.errors && typeof responseData.errors === 'object') {
+      const first = Object.values(responseData.errors).flat()?.[0]
+      if (typeof first === 'string') message = first
+    }
+
+    if (!message && typeof responseData === 'string') {
+      message = responseData
+    }
+
+    if (!message && error?.message) {
+      message = error.message
+    }
+
+    errorMessage.value = maybeAddContextWindowTip(message) ?? 'Something went wrong. Please try again.'
   } finally {
     loading.value = false
   }
