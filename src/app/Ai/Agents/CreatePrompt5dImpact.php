@@ -6,10 +6,9 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
-use Laravel\Ai\Providers\Tools\WebFetch;
 use Stringable;
 
-class DiscoverFiles implements Agent, Conversational, HasTools
+class CreatePrompt5dImpact implements Agent, Conversational, HasTools
 {
     use Promptable;
 
@@ -18,7 +17,10 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return 'You are a helpful assistant that looks at project files and url contents and provides short summary about the data in each of these sources. These summaries will be used by another agent to do indepth  analysis of the project. Based on the summaries you should also provide a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive. You should provide output in the following json structure \n\n
+        return 'You are a helpful assistant that is provided with summary of data and the actual datapresent on different sources. You are also given how the data across the sources is related. Based on the insights you should create a comprehensive prompt for the next agent to do a deep dive analysis of the project. Format the prompt using markdown with proper line breaks. 
+        
+        Input data will be provided to you in the following format:
+
         {
             "summary_insights" : [
             {
@@ -39,6 +41,12 @@ class DiscoverFiles implements Agent, Conversational, HasTools
             }
             ],
             "overall_with_relationships_summary": "a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive"
+        }
+        
+        You should provide output in the following json structure \n\n
+        
+        {
+            "next_agent_prompt": "prompt formatted in markdown for the next agent to do deep dive analysis of the project based on the summaries"
         } 
             \n\n DO NOT return any line breaks such as \n or \r in the response.
 
@@ -60,8 +68,6 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function tools(): iterable
     {
-        return [
-            new WebFetch,
-        ];
+        return [];
     }
 }

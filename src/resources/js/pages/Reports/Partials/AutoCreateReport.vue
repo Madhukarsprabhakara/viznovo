@@ -13,6 +13,28 @@
               v-model="selectedTemplateKey"
               type="radio"
               name="dashboard-template"
+              value="random-project"
+              class="absolute inset-0 appearance-none"
+              @change="applyTemplate"
+            />
+
+            <div class="flex-1">
+              <div class="text-sm font-semibold text-gray-900">Don't want to think</div>
+              <div class="mt-1 text-sm text-gray-600">
+                Multiple agents will work together to analyze the project. The agents will go through the data see what they can find, normalize the data and then finally create a dashboard. You will have the option to modify the prompt after the dashboard is generated.
+              </div>
+            </div>
+
+            <CheckCircle class="invisible size-5 text-indigo-600 group-has-[:checked]:visible" aria-hidden="true" />
+          </label>
+
+          <label
+            class="group relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 hover:border-gray-400 has-[:checked]:border-indigo-500 has-[:checked]:ring-2 has-[:checked]:ring-indigo-400/40"
+          >
+            <input
+              v-model="selectedTemplateKey"
+              type="radio"
+              name="dashboard-template"
               value="impact-project"
               class="absolute inset-0 appearance-none"
               @change="applyTemplate"
@@ -28,6 +50,8 @@
             <CheckCircle class="invisible size-5 text-indigo-600 group-has-[:checked]:visible" aria-hidden="true" />
           </label>
 
+          
+          
           <label
             class="group relative flex cursor-pointer rounded-lg border border-gray-300 bg-white p-4 hover:border-gray-400 has-[:checked]:border-indigo-500 has-[:checked]:ring-2 has-[:checked]:ring-indigo-400/40"
           >
@@ -219,9 +243,13 @@ async function testRun() {
     prompt.value = response?.data?.next_agent_prompt ?? ''
 
     const resultPayload = response?.data?.result
-    const html =
-      (resultPayload && typeof resultPayload === 'object' && (resultPayload.data ?? resultPayload.html)) ??
-      (typeof resultPayload === 'string' ? resultPayload : '')
+
+    let html = ''
+    if (typeof resultPayload === 'string') {
+      html = resultPayload
+    } else if (resultPayload && typeof resultPayload === 'object') {
+      html = resultPayload.data ?? resultPayload.html ?? ''
+    }
 
     reportHtml.value = html
   } catch (error) {

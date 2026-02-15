@@ -13,7 +13,9 @@ use App\Models\AIModel;
 use League\Csv\Reader;
 use League\Csv\Statement;
 use App\Ai\Agents\DiscoverFiles;
+use App\Ai\Agents\CreatePrompt5dImpact;
 use App\Ai\Agents\CustomResearch;
+use GuzzleHttp\Promise\Create;
 use Spatie\Browsershot\Browsershot;
 
 use Illuminate\Support\Facades\Auth;
@@ -180,9 +182,39 @@ class ReportController extends Controller
                 }
 
                 if ($file->type === 'website') {
-                    $websiteContentArr[] = [
+                    $websiteItem = [
                         'website_url' => $file->url,
                     ];
+
+                    try {
+                        $chromePath = $this->resolveChromeExecutablePath();
+
+                        $timeoutSeconds = (int) env('BROWSERSHOT_TIMEOUT', 90);
+                        $delayMs = (int) env('BROWSERSHOT_JS_DELAY_MS', 2000);
+
+                        $browsershot = Browsershot::url($file->url)
+                            ->noSandbox()
+                            ->setNodeBinary(env('BROWSERSHOT_NODE_BINARY', '/usr/bin/node'))
+                            ->setNpmBinary(env('BROWSERSHOT_NPM_BINARY', '/usr/bin/npm'))
+                            ->timeout($timeoutSeconds)
+                            ->waitUntilNetworkIdle()
+                            ->setDelay($delayMs)
+                            ->setNodeEnv([
+                                'HOME' => '/tmp',
+                                'XDG_CACHE_HOME' => '/tmp',
+                                'PUPPETEER_CACHE_DIR' => '/tmp/puppeteer',
+                            ]);
+
+                        if ($chromePath) {
+                            $browsershot->setChromePath($chromePath);
+                        }
+
+                        $websiteItem['website_html'] = $browsershot->bodyHtml();
+                    } catch (\Throwable $e) {
+                        $websiteItem['website_error'] = $e->getMessage();
+                    }
+
+                    $websiteContentArr[] = $websiteItem;
                 }
             }
 
@@ -197,18 +229,43 @@ class ReportController extends Controller
 
 
             $jsonData = json_encode($input_data);
-
             // File discovery
             // create dashboard based on the insights from file discovery agent
-            $response = (new DiscoverFiles)
+            $discovery = (new DiscoverFiles)
                 ->prompt(
                     'Here are the files and its contents...\n\n' . $jsonData,
-                    provider: ['gemini', 'openai'],
+                    provider: ['gemini'],
+                    timeout: 600,
                 );
 
-            $resp_array = json_decode($response, true);
+            $discovery_string = json_encode($discovery, true);
+            sleep(60);
+            $prompt_dd = (new CreatePrompt5dImpact)
+                ->prompt(
+                    'Here are the summary of the file and url contents...\n\n' . $discovery_string,
+                    provider: ['gemini'],
+                    timeout: 600,
+                );
+            $prompt_array = json_decode($prompt_dd, true);
+            $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
 
-            $nextAgentPrompt = $resp_array['next_agent_prompt'] ?? null;
+            $prompt = $nextAgentPrompt;
+            sleep(60); // Simulate a delay for processing
+            $response = (new CustomResearch)
+                ->prompt(
+                    'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                    provider: ['gemini'],
+                    model: 'gemini-3-pro-preview',
+                    timeout: 600,
+                );
+            $decoded = json_decode($response, true); // true => associative arrays
+            $promptResponse = $decoded[0]['prompt_response'] ?? null;
+            // return [
+            //     'status' => 'success',
+            //     'message' => 'Response generated successfully.',
+            //     'data' => $promptResponse,
+            // ];
+
             if (!$nextAgentPrompt) {
                 return response()->json([
                     'message' => 'File discovery agent did not return next_agent_prompt',
@@ -216,14 +273,14 @@ class ReportController extends Controller
                 ], 422);
             }
 
-            $result = null;
+            $result = $promptResponse;
 
-            if ($request->model_key == 'gpt-5') {
-                $result = $aiService->getOpenAIReport($nextAgentPrompt, $jsonData);
-            }
-            if ($request->model_key == 'gemini-3-pro') {
-                $result = $aiService->getGeminiAI($nextAgentPrompt, $jsonData);
-            }
+            // if ($request->model_key == 'gpt-5') {
+            //     $result = $aiService->getOpenAIReport($nextAgentPrompt, $jsonData);
+            // }
+            // if ($request->model_key == 'gemini-3-pro') {
+            //     $result = $aiService->getGeminiAI($nextAgentPrompt, $jsonData);
+            // }
 
             if ($result === null) {
                 return response()->json([
