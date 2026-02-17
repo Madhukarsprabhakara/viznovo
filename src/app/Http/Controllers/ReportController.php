@@ -231,37 +231,91 @@ class ReportController extends Controller
             $jsonData = json_encode($input_data);
             // File discovery
             // create dashboard based on the insights from file discovery agent
-            $discovery = (new DiscoverFiles)
-                ->prompt(
-                    'Here are the files and its contents...\n\n' . $jsonData,
-                    provider: ['gemini'],
-                    model: 'gemini-3-pro-preview',
-                    timeout: 600,
-                );
 
-            $discovery_string = json_encode($discovery, true);
-            sleep(60);
-            $prompt_dd = (new CreatePrompt5dImpact)
-                ->prompt(
-                    'Here are the summary of the file and url contents...\n\n' . $discovery_string,
-                    provider: ['gemini'],
-                    model: 'gemini-3-pro-preview',
-                    timeout: 600,
-                );
-            $prompt_array = json_decode($prompt_dd, true);
-            $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
 
-            $prompt = $nextAgentPrompt;
-            sleep(60); // Simulate a delay for processing
-            $response = (new CustomResearch)
-                ->prompt(
-                    'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                    provider: ['gemini'],
-                    model: 'gemini-3-pro-preview',
-                    timeout: 600,
-                );
-            $decoded = json_decode($response, true); // true => associative arrays
-            $promptResponse = $decoded[0]['prompt_response'] ?? null;
+            if ($request->model_key == 'gpt-5') {
+                $discovery = (new DiscoverFiles)->forUser($request->user())
+                    ->prompt(
+                        'Here are the files and its contents...\n\n' . $jsonData,
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+
+                $discovery_string = json_encode($discovery, true);
+                sleep(60);
+                $prompt_dd = (new CreatePrompt5dImpact)->forUser($request->user())
+                    ->prompt(
+                        'Here are the summary of the file and url contents...\n\n' . $discovery_string,
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+                $prompt_array = json_decode($prompt_dd, true);
+                $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
+
+                $prompt = $nextAgentPrompt;
+                sleep(60); // Simulate a delay for processing
+                $response = (new CustomResearch)->forUser($request->user())
+                    ->prompt(
+                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+            }
+            if ($request->model_key == 'gemini-3-pro') {
+                $discovery = (new DiscoverFiles)->forUser($request->user())
+                    ->prompt(
+                        'Here are the files and its contents...\n\n' . $jsonData,
+                        provider: [
+                            'gemini' => 'gemini-3-pro-preview',
+                            'openai' => 'gpt-5.2',
+                        ],
+                        timeout: 600,
+                    );
+
+                $discovery_string = json_encode($discovery, true);
+                sleep(60);
+                $prompt_dd = (new CreatePrompt5dImpact)->forUser($request->user())
+                    ->prompt(
+                        'Here are the summary of the file and url contents...\n\n' . $discovery_string,
+                        provider: [
+                            'gemini' => 'gemini-3-pro-preview',
+                            'openai' => 'gpt-5.2',
+                        ],
+                        timeout: 600,
+                    );
+                $prompt_array = json_decode($prompt_dd, true);
+                $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
+
+                $prompt = $nextAgentPrompt;
+                sleep(60); // Simulate a delay for processing
+                $response = (new CustomResearch)->forUser($request->user())
+                    ->prompt(
+                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                        provider: [
+                            'gemini' => 'gemini-3-pro-preview',
+                            'openai' => 'gpt-5.2',
+                        ],
+                        timeout: 600,
+                    );
+            }
+
+            $decoded = json_decode((string) $response, true); // true => associative arrays
+
+            // Some providers / gateways may return JSON as a quoted string (double-encoded).
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+
+            $promptResponse = is_array($decoded) ? ($decoded[0]['prompt_response'] ?? null) : null;
             // return [
             //     'status' => 'success',
             //     'message' => 'Response generated successfully.',
@@ -425,41 +479,43 @@ class ReportController extends Controller
 
             // return response()->json($input_data);
             $jsonData = json_encode($input_data);
-            
+
 
             $prompt = $request->input('prompt');
 
             if ($request->model_key == 'gpt-5') {
-                $response = (new CustomResearch)
-                ->prompt(
-                    'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                    provider: [
-                        'openai' => 'gpt-5.2',
-                        'gemini' => 'gemini-3-pro-preview',
-                    ],
-                    timeout: 600,
-                );
+                $response = (new CustomResearch)->forUser($request->user())
+                    ->prompt(
+                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                        provider: 'openai',
+                        model: 'gpt-5.2',
+                        timeout: 600,
+                    );
             }
             if ($request->model_key == 'gemini-3-pro') {
-                $response = (new CustomResearch)
-                ->prompt(
-                    'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                    provider: [
-                        'gemini' => 'gemini-3-pro-preview',
-                        'openai' => 'gpt-5.2',
-                    ],
-                    timeout: 600,
-                );
+                $response = (new CustomResearch)->forUser($request->user())
+                    ->prompt(
+                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                        provider: 'gemini',
+                        model: 'gemini-3-pro-preview',
+                        timeout: 600,
+                    );
             }
-            
-            $decoded = json_decode($response, true); // true => associative arrays
-            $promptResponse = $decoded[0]['prompt_response'] ?? null;
+
+            $decoded = json_decode((string) $response, true); // true => associative arrays
+
+            // Some providers / gateways may return JSON as a quoted string (double-encoded).
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+
+            $promptResponse = is_array($decoded) ? ($decoded[0]['prompt_response'] ?? null) : null;
             return [
                 'status' => 'success',
                 'message' => 'Response generated successfully.',
                 'data' => $promptResponse,
             ];
-            
+
 
             // 
 

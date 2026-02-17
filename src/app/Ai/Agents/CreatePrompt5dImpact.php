@@ -6,11 +6,14 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
+use Laravel\Ai\Attributes\UseSmartestModel;
+use Laravel\Ai\Concerns\RemembersConversations;
 use Stringable;
 
+#[UseSmartestModel]
 class CreatePrompt5dImpact implements Agent, Conversational, HasTools
 {
-    use Promptable;
+    use Promptable, RemembersConversations;
 
     /**
      * Get the instructions that the agent should follow.
