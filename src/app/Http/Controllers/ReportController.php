@@ -22,6 +22,89 @@ use Illuminate\Support\Facades\Auth;
 
 class ReportController extends Controller
 {
+    private function extractPromptResponse(mixed $decoded, string $rawText): ?string
+    {
+        if (is_array($decoded)) {
+            if (array_key_exists('prompt_response', $decoded) && is_string($decoded['prompt_response'])) {
+                return $decoded['prompt_response'];
+            }
+
+            if (array_is_list($decoded)) {
+                foreach ($decoded as $item) {
+                    if (is_array($item) && array_key_exists('prompt_response', $item) && is_string($item['prompt_response'])) {
+                        return $item['prompt_response'];
+                    }
+                }
+            }
+        }
+
+        $trimmed = trim($rawText);
+        if (stripos($trimmed, '<html') !== false || stripos($trimmed, '<!doctype html') !== false) {
+            return $trimmed;
+        }
+
+        return null;
+    }
+
+    private function decodeAiJson(string $rawText): array
+    {
+        $trimmed = trim($rawText);
+
+        $candidates = [];
+        $candidates[] = $trimmed;
+
+        // Strip common code fences.
+        $noFences = preg_replace('/^\s*```(?:json)?\s*/i', '', $trimmed);
+        $noFences = preg_replace('/\s*```\s*$/', '', (string) $noFences);
+        $noFences = trim((string) $noFences);
+        if ($noFences !== '' && $noFences !== $trimmed) {
+            $candidates[] = $noFences;
+        }
+
+        // Sometimes the whole payload is wrapped in quotes.
+        foreach ([$trimmed, $noFences] as $v) {
+            $v = trim((string) $v);
+            if (strlen($v) >= 2 && ((str_starts_with($v, '"') && str_ends_with($v, '"')) || (str_starts_with($v, "'") && str_ends_with($v, "'")))) {
+                $candidates[] = trim(substr($v, 1, -1));
+            }
+        }
+
+        // Attempt to repair the common invalid pattern: [{""prompt_response"":""...""}]
+        foreach ($candidates as $candidate) {
+            if (str_contains($candidate, '""')) {
+                $candidates[] = str_replace('""', '"', $candidate);
+            }
+        }
+
+        // Try decoding each candidate.
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            $decoded = json_decode($candidate, true);
+            $error = json_last_error();
+            $errorMessage = json_last_error_msg();
+
+            // Some providers / gateways may return JSON as a quoted string (double-encoded).
+            if (is_string($decoded)) {
+                $decoded2 = json_decode($decoded, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return [$decoded2, null];
+                }
+            }
+
+            if ($error === JSON_ERROR_NONE) {
+                return [$decoded, null];
+            }
+        }
+
+        // Last error message based on raw trimmed input.
+        json_decode($trimmed, true);
+        return [null, json_last_error_msg() ?: 'Invalid JSON'];
+    }
+
     private function resolveChromeExecutablePath(): ?string
     {
         $candidates = [
@@ -244,7 +327,7 @@ class ReportController extends Controller
                         timeout: 600,
                     );
 
-                $discovery_string = json_encode($discovery, true);
+                $discovery_string = (string) $discovery;
                 sleep(60);
                 $prompt_dd = (new CreatePrompt5dImpact)->forUser($request->user())
                     ->prompt(
@@ -255,8 +338,9 @@ class ReportController extends Controller
                         ],
                         timeout: 600,
                     );
-                $prompt_array = json_decode($prompt_dd, true);
-                $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
+                $rawPromptDd = (string) $prompt_dd;
+                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($rawPromptDd);
+                $nextAgentPrompt = is_array($promptDecoded) ? ($promptDecoded['next_agent_prompt'] ?? null) : null;
 
                 $prompt = $nextAgentPrompt;
                 sleep(60); // Simulate a delay for processing
@@ -281,7 +365,7 @@ class ReportController extends Controller
                         timeout: 600,
                     );
 
-                $discovery_string = json_encode($discovery, true);
+                $discovery_string = (string) $discovery;
                 sleep(60);
                 $prompt_dd = (new CreatePrompt5dImpact)->forUser($request->user())
                     ->prompt(
@@ -292,8 +376,9 @@ class ReportController extends Controller
                         ],
                         timeout: 600,
                     );
-                $prompt_array = json_decode($prompt_dd, true);
-                $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
+                $rawPromptDd = (string) $prompt_dd;
+                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($rawPromptDd);
+                $nextAgentPrompt = is_array($promptDecoded) ? ($promptDecoded['next_agent_prompt'] ?? null) : null;
 
                 $prompt = $nextAgentPrompt;
                 sleep(60); // Simulate a delay for processing
@@ -308,14 +393,9 @@ class ReportController extends Controller
                     );
             }
 
-            $decoded = json_decode((string) $response, true); // true => associative arrays
-
-            // Some providers / gateways may return JSON as a quoted string (double-encoded).
-            if (is_string($decoded)) {
-                $decoded = json_decode($decoded, true);
-            }
-
-            $promptResponse = is_array($decoded) ? ($decoded[0]['prompt_response'] ?? null) : null;
+            $rawResponseText = (string) $response;
+            [$decoded, $decodeError] = $this->decodeAiJson($rawResponseText);
+            $promptResponse = $this->extractPromptResponse($decoded, $rawResponseText);
             // return [
             //     'status' => 'success',
             //     'message' => 'Response generated successfully.',
@@ -335,9 +415,11 @@ class ReportController extends Controller
 
             if ($result === null) {
                 return response()->json([
-                    'message' => 'Unsupported or missing model_key',
+                    'message' => 'Report could not be generated (AI response could not be parsed). Please try re-running the report.',
                     'model_key' => $request->model_key,
                     'next_agent_prompt' => $nextAgentPrompt,
+                    'decode_error' => $decodeError,
+                    'raw_response_preview' => Str::limit((string) $rawResponseText, 4000),
                 ], 422);
             }
 
@@ -497,14 +579,18 @@ class ReportController extends Controller
                     );
             }
 
-            $decoded = json_decode((string) $response, true); // true => associative arrays
+            $rawResponseText = (string) $response;
+            [$decoded, $decodeError] = $this->decodeAiJson($rawResponseText);
+            $promptResponse = $this->extractPromptResponse($decoded, $rawResponseText);
 
-            // Some providers / gateways may return JSON as a quoted string (double-encoded).
-            if (is_string($decoded)) {
-                $decoded = json_decode($decoded, true);
+            if ($promptResponse === null) {
+                return response()->json([
+                    'message' => 'Response generated but could not be parsed (invalid JSON from model).',
+                    'decode_error' => $decodeError,
+                    'raw_response_preview' => Str::limit((string) $rawResponseText, 4000),
+                ], 422);
             }
 
-            $promptResponse = is_array($decoded) ? ($decoded[0]['prompt_response'] ?? null) : null;
             return [
                 'status' => 'success',
                 'message' => 'Response generated successfully.',

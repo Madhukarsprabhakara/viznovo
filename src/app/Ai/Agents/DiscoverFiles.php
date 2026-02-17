@@ -42,9 +42,7 @@ class DiscoverFiles implements Agent, Conversational, HasTools
             ],
             "overall_with_relationships_summary": "a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive"
         } 
-            \n\n DO NOT return any line breaks such as \n or \r in the response.
-
-        DO NOT return escaped characters such as \", \', \\ etc.\n\n';
+            \n\n Return valid JSON. Escaping required by JSON is allowed.';
     }
 
     /**

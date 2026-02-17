@@ -51,9 +51,8 @@ class CreatePrompt5dImpact implements Agent, Conversational, HasTools
         {
             "next_agent_prompt": "prompt formatted in markdown for the next agent to do deep dive analysis of the project based on the summaries"
         } 
-            \n\n DO NOT return any line breaks such as \n or \r in the response.
 
-        DO NOT return escaped characters such as \", \', \\ etc.\n\n';
+        Return valid JSON. Escaping required by JSON is allowed. Markdown is allowed inside the string.';
     }
 
     /**
