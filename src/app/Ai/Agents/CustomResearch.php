@@ -4,14 +4,15 @@ namespace App\Ai\Agents;
 
 use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
+use Laravel\Ai\Concerns\RemembersConversations;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
-use Laravel\Ai\Providers\Tools\WebFetch;
 use Stringable;
+
 
 class CustomResearch implements Agent, Conversational, HasTools
 {
-    use Promptable;
+    use Promptable, RemembersConversations;
 
     /**
      * Get the instructions that the agent should follow.
@@ -55,23 +56,39 @@ class CustomResearch implements Agent, Conversational, HasTools
                         }
                     ]
 
-       - Provide me a well designed dashboard in HTML.
+    
+    
+# Formatting
+- Provide me a well designed dashboard in HTML.
 
-       - I am using tailwindcss. 
+- Just the HTML code should be returned that can be rendered directly on browser.
 
-        - Do not use any other css.
+ - USE ONLY tailwindcss. 
 
-       - DO NOT give me code fence. Just the HTML  should be returned.
+- Each section, card, and stats block should be modular and copyable as its own block.
 
-       - DO NOT return any line breaks such as \n or \r in the html code.
+- Each block or card should be one below the other so it looks good even on small screen sizes.
 
-       - DO NOT return escaped characters such as \", \', \\ etc.
+- All key ideas, stats, recommendations, and testimonials are styled for clear distractions.
 
-       - DO NOT use script or style tags.
+- Make it mobile responsive so it works on all screen sizes.
 
-       - Make it visually appealing.
+- Use lucide vue next svgs for icons.
+
+- Do not use any other css.
+
+- DO NOT give me code fence. 
+
+- DO NOT return any line breaks such as \n or \r in the html code.
+
+- Return valid JSON. Escaping required by JSON (e.g. for quotes inside strings) is allowed.
+- Do not wrap the entire JSON response in quotes (no double-encoding).
+
+- DO NOT use script or style tags.
+
+- Make it visually appealing.
        
-       - Use colors, blocks, spacing, and typography to enhance the design.';
+- Use light pastel colors, blocks, spacing, and typography to enhance the design.';
     }
 
     /**

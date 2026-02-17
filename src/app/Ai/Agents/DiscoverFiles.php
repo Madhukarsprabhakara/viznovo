@@ -6,12 +6,14 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
-use Laravel\Ai\Providers\Tools\WebFetch;
+use Laravel\Ai\Concerns\RemembersConversations;
+
 use Stringable;
+
 
 class DiscoverFiles implements Agent, Conversational, HasTools
 {
-    use Promptable;
+    use Promptable, RemembersConversations;
 
     /**
      * Get the instructions that the agent should follow.
@@ -60,8 +62,6 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function tools(): iterable
     {
-        return [
-            new WebFetch,
-        ];
+        return [];
     }
 }
