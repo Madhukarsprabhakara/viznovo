@@ -331,12 +331,7 @@ class ReportController extends Controller
 
             $result = $promptResponse;
 
-            // if ($request->model_key == 'gpt-5') {
-            //     $result = $aiService->getOpenAIReport($nextAgentPrompt, $jsonData);
-            // }
-            // if ($request->model_key == 'gemini-3-pro') {
-            //     $result = $aiService->getGeminiAI($nextAgentPrompt, $jsonData);
-            // }
+            
 
             if ($result === null) {
                 return response()->json([
