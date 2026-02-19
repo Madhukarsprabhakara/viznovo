@@ -368,10 +368,11 @@ class ReportController extends Controller
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
                 'website_urls' => $websiteContentArr,
+                'pgsql_tables' => null,
             ];
 
 
-            $jsonData = json_encode($input_data);
+            return $jsonData = json_encode($input_data);
             // File discovery
             // create dashboard based on the insights from file discovery agent
 
