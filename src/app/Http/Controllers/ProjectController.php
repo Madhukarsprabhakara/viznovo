@@ -6,7 +6,12 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Services\ProjectService;
-
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
+use App\Jobs\CreateCsvTextTable;
+use App\Jobs\AddRecordsCsvTextTable;
+use App\Jobs\CreateCsvDataTypeTable;
+use App\Services\CsvFileService;
 class ProjectController extends Controller
 {
     /**
@@ -73,8 +78,7 @@ class ProjectController extends Controller
             return Inertia::render('Projects/Partials/Edit', [
                 'project' => $project,
             ]);
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to load project for editing: ' . $e->getMessage()])->withInput();
         }
     }
@@ -104,7 +108,7 @@ class ProjectController extends Controller
     {
         //
         try {
-            
+
             $project->delete();
             return redirect()->route('projects.index')->with('success', 'Project deleted successfully.');
         } catch (\Exception $e) {
@@ -112,7 +116,7 @@ class ProjectController extends Controller
         }
     }
 
-    public function upload(Request $request, Project $project, ProjectService $projectService)
+    public function upload(Request $request, Project $project, ProjectService $projectService, CsvFileService $csvFileService)
     {
 
         try {
@@ -123,10 +127,27 @@ class ProjectController extends Controller
 
             $files = $request->file('files');
             foreach ($files as $file) {
-                $projectService->handleFileUpload($project, $file);
+                $projectData = $projectService->handleFileUpload($project, $file);
+
+                if (strtolower($file->getClientOriginalExtension()) === 'csv') {
+                    $projectData->csv_text_table_name = $csvFileService->getTextTableNameFromCsvName($file, $projectData->id);
+                    $projectData->save();
+                }
                 //dispatch a job to process csv file
+                Bus::batch([
+                    [
+                        new CreateCsvTextTable($projectData),
+                        new AddRecordsCsvTextTable($projectData),
+                        new CreateCsvDataTypeTable($projectData),
+                    ],
+
+                    
+                ])->then(function (Batch $batch) {
+                    // All jobs completed successfully...log the success in a separate table with batch id and project data id
+
+                })->dispatch();
             }
-            
+
             // $projectService->handleFileUpload($project, $file);
 
             return redirect()->route('projects.show', $project)->with('success', 'File uploaded successfully.');

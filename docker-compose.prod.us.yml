@@ -80,6 +80,17 @@ services:
     entrypoint: ["npm"]
     networks:
       - irep
+
+  irep_supervisord:
+    build:
+      context: .
+      dockerfile: supervisord-prod.dockerfile
+    container_name: irep_supervisord
+    depends_on:
+      - irep_db
+    networks:
+      - irep
+    restart: unless-stopped
   certbot:
     image: certbot/certbot
     volumes:

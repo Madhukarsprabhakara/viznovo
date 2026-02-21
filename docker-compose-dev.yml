@@ -78,3 +78,17 @@ services:
     command: ["run", "dev", "--", "--host", "0.0.0.0"]
     networks:
       - irep
+  irep_supervisord:
+    build:
+      context: .
+      dockerfile: supervisord.dockerfile
+    container_name: irep_supervisord
+    depends_on:
+      - irep_nginx
+      - irep_php
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    networks:
+      - irep
+    restart: unless-stopped
