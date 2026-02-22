@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Bus;
 use App\Jobs\CreateCsvTextTable;
 use App\Jobs\AddRecordsCsvTextTable;
 use App\Jobs\CreateCsvDataTypeTable;
+use App\Jobs\IdentifyCsvColumnDataTypes;
+use App\Jobs\AddRecordsCsvDataTypeTable;
 use App\Services\CsvFileService;
 class ProjectController extends Controller
 {
@@ -131,6 +133,7 @@ class ProjectController extends Controller
 
                 if (strtolower($file->getClientOriginalExtension()) === 'csv') {
                     $projectData->csv_text_table_name = $csvFileService->getTextTableNameFromCsvName($file, $projectData->id);
+                    $projectData->csv_data_type_table_name = $csvFileService->getDataTypeTableNameFromCsvName($file, $projectData->id);
                     $projectData->save();
                 }
                 //dispatch a job to process csv file
@@ -138,7 +141,9 @@ class ProjectController extends Controller
                     [
                         new CreateCsvTextTable($projectData),
                         new AddRecordsCsvTextTable($projectData),
+                        new IdentifyCsvColumnDataTypes($projectData),
                         new CreateCsvDataTypeTable($projectData),
+                        new AddRecordsCsvDataTypeTable($projectData),
                     ],
 
                     

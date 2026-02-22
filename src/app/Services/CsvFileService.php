@@ -7,6 +7,46 @@ use Illuminate\Http\UploadedFile;
 use League\Csv\Reader;
 class CsvFileService
 {
+    public function getDataTypeTableNameFromCsvName($csvFileNameOrFile, $projectDataId): string
+    {
+        $originalName = $this->extractCsvBaseName($csvFileNameOrFile);
+
+        $tableBase = $this->sanitizeTableIdentifier($originalName);
+        if ($tableBase === '') {
+            $tableBase = 'csv';
+        }
+
+        if (preg_match('/^[0-9]/', $tableBase) === 1) {
+            $tableBase = 't_' . $tableBase;
+        }
+
+        $suffix = '_data_type_' . (string) $projectDataId;
+        $maxLength = 55;
+
+        if (strlen($suffix) >= $maxLength) {
+            $fallback = 't' . $suffix;
+            $fallback = substr($fallback, 0, $maxLength);
+            if (preg_match('/^[0-9]/', $fallback) === 1) {
+                $fallback = 't_' . $fallback;
+                $fallback = substr($fallback, 0, $maxLength);
+            }
+            return $fallback;
+        }
+
+        $baseMaxLength = $maxLength - strlen($suffix);
+        $tableBase = substr($tableBase, 0, $baseMaxLength);
+        $tableBase = rtrim($tableBase, '_');
+        if ($tableBase === '') {
+            $tableBase = 'csv';
+        }
+        if (preg_match('/^[0-9]/', $tableBase) === 1) {
+            $tableBase = 't_' . $tableBase;
+            $tableBase = substr($tableBase, 0, $baseMaxLength);
+            $tableBase = rtrim($tableBase, '_');
+        }
+
+        return $tableBase . $suffix;
+    }
     public function getTextTableNameFromCsvName($csvFileNameOrFile, $projectDataId): string
     {
         $originalName = $this->extractCsvBaseName($csvFileNameOrFile);
@@ -96,6 +136,7 @@ class CsvFileService
             $columns[] = [
                 'csv_header' => (string) $header,
                 'db_column' => $column,
+                'data_type' => 'text-open-ended',
             ];
         }
 
@@ -209,6 +250,7 @@ class CsvFileService
         //get the all data types from csv_data_types table for those columns
         //send it to openai/gemini for data type inference
         //get the data types for each column in a specific json format and store it in project_data_csvs table with type csv_data_type and db_column as column name and csv_header as original csv header name
+        
 
     }
     

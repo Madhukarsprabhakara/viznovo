@@ -266,5 +266,56 @@ class CsvTextTableService
 
         return $inserted;
     }
+    public function getRecordsForDataTypeIdentification(ProjectData $projectData, string $schemaName = null, string $tableName = null, int $limit = 20): array
+    {
+        $qualifiedTable = $schemaName . '.' . $tableName;
+
+        $connection = DB::getDefaultConnection();
+        if (DB::connection($connection)->getDriverName() !== 'pgsql') {
+            throw new InvalidArgumentException('getRecordsForDataTypeIdentification only supports pgsql; got ' . DB::connection($connection)->getDriverName());
+        }
+
+        if (!Schema::connection($connection)->hasTable($qualifiedTable)) {
+            throw new InvalidArgumentException('Target table does not exist: ' . $qualifiedTable);
+        }
+
+        $hasTableType = Schema::hasColumn('project_data_csvs', 'table_type');
+        $mappingQuery = ProjectDataCsv::query()->where('project_data_id', (int) $projectData->id);
+        if ($hasTableType) {
+            $mappingQuery->whereIn('table_type', ['text_table', 'text']);
+        }
+        $mappings = $mappingQuery->get(['csv_header', 'db_column']);
+
+        $dbColumnToCsvHeader = [];
+        foreach ($mappings as $map) {
+            $dbColumn = strtolower(trim((string) ($map->db_column ?? '')));
+            $csvHeader = (string) ($map->csv_header ?? '');
+            if ($dbColumn === '' || $csvHeader === '') {
+                continue;
+            }
+            $dbColumnToCsvHeader[$dbColumn] = $csvHeader;
+        }
+
+        return DB::connection($connection)
+            ->table($qualifiedTable)
+            ->limit($limit)
+            ->get()
+            ->map(function ($item) use ($dbColumnToCsvHeader) {
+                $row = (array) $item;
+                if (empty($dbColumnToCsvHeader)) {
+                    return $row;
+                }
+
+                $mapped = [];
+                foreach ($row as $dbColumn => $value) {
+                    $lookupKey = strtolower((string) $dbColumn);
+                    $csvHeader = $dbColumnToCsvHeader[$lookupKey] ?? (string) $dbColumn;
+                    $mapped[$csvHeader] = $value;
+                }
+
+                return $mapped;
+            })
+            ->toArray();
+    }
     
 }

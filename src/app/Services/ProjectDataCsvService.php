@@ -15,20 +15,20 @@ class ProjectDataCsvService
      */
     public function storeCsvColumns(ProjectData $projectData, array $columns, string $tableType = 'text', ?int $userId = null)
     {
-        $csvDataTypeId = $this->getTextOpenEndedCsvDataTypeId();
+        // $csvDataTypeId = $this->getTextOpenEndedCsvDataTypeId($col['db_column']);
 
         $rows = [];
         $now = now();
         foreach ($columns as $col) {
             $csvHeader = (string) ($col['csv_header'] ?? '');
-            $dbColumn = (string) ($col['db_column'] ?? '');
+            $dbColumn = (string) ($col['db_column'] ?? $this->getDbColumnFromCsvHeader(trim($csvHeader), $projectData->id));
             $csvHeader = trim($csvHeader);
             $dbColumn = trim($dbColumn);
             
 
             $row = [
                 'project_data_id' => (int) $projectData->id,
-                'csv_data_type_id' => (int) $csvDataTypeId,
+                'csv_data_type_id' => (int) $this->getTextOpenEndedCsvDataTypeId($col['data_type']),
                 'user_id' => $projectData->user_id,
                 'csv_header' => $csvHeader,
                 'db_column' => $dbColumn,
@@ -47,10 +47,8 @@ class ProjectDataCsvService
         
     }
 
-    private function getTextOpenEndedCsvDataTypeId(): int
+    private function getTextOpenEndedCsvDataTypeId(string $key): int
     {
-        $key = 'text-open-ended';
-
         $type = CsvDataType::where('csv_type_key', $key)->first();
         if ($type) {
             return (int) $type->id;
@@ -68,5 +66,11 @@ class ProjectDataCsvService
         }
 
         return (int) $created->id;
+    }
+    public function getDbColumnFromCsvHeader(string $csvHeader, int $projectDataId): string
+    {
+       return ProjectDataCsv::where('project_data_id', $projectDataId)
+            ->where('csv_header', $csvHeader)->where('table_type', 'text_table')
+            ->first('db_column')->db_column ?? '';
     }
 }

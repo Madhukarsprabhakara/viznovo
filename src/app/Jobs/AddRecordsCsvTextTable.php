@@ -40,5 +40,7 @@ class AddRecordsCsvTextTable implements ShouldQueue
         //map db_column to csv_header from project_data_csvs table for the project data
         // $records = []; // get the records from the csv file using the url in project data and map the columns to the db columns using the project_data_csvs table
         $csvTextTableService->addRecordsToCsvTextTable($schemaName, $tableName, $records);
+        $this->projectData->is_csv_text_table_populated = true;
+        $this->projectData->save();
     }
 }
