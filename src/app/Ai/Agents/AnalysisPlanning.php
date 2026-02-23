@@ -7,11 +7,9 @@ use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
 use Laravel\Ai\Concerns\RemembersConversations;
-
 use Stringable;
 
-
-class DiscoverFiles implements Agent, Conversational, HasTools
+class AnalysisPlanning implements Agent, Conversational, HasTools
 {
     use Promptable, RemembersConversations;
 
@@ -20,7 +18,10 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return 'You are a helpful assistant that looks at database tables, project files and url contents and provides short summary about the data in each of these sources. These summaries will be used by another agent to do indepth  analysis of the project. If there are more than one data source, you should also provide a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive. You should provide output in the following json structure \n\n
+        return 'You are a helpful data analyst that is provided with summary of data and sample data on different sources. You are also given how the data across the sources are related. Based on the insights you should create a comprehensive plan on what would you analyze and how you would go about doing it. Format the plan using markdown with proper line breaks. 
+        
+        Input data will be provided to you in the following format:
+
         {
             "summary_insights" : [
             {
@@ -46,8 +47,15 @@ class DiscoverFiles implements Agent, Conversational, HasTools
             },
             ],
             "overall_with_relationships_summary": "a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive"
+        }
+        
+        You should provide output in the following json structure \n\n
+        
+        {
+            "analysis_plan": "prompt formatted in markdown for the next agent to do deep dive analysis of the project based on the summaries"
         } 
-            \n\n Return valid JSON. Escaping required by JSON is allowed.';
+
+        Return valid JSON. Escaping required by JSON is allowed. Markdown is allowed inside the string.';
     }
 
     /**

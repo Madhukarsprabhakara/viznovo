@@ -8,4 +8,9 @@ class ProjectDataCsv extends Model
 {
     //
     protected $guarded = [];
+
+    public function csvDataType()
+    {
+        return $this->hasOne(CsvDataType::class, 'id', 'csv_data_type_id' );
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Ai\Agents\AnalysisPlanning;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -9,12 +10,15 @@ use App\Models\Project;
 use Spatie\PdfToText\Pdf;
 use Illuminate\Support\Str;
 use App\Services\AIService;
+use App\Services\CsvDataSourceService;
+use App\Services\CsvDTTableService;
 use App\Models\AIModel;
 use League\Csv\Reader;
 use League\Csv\Statement;
 use App\Ai\Agents\DiscoverFiles;
 use App\Ai\Agents\CreatePrompt5dImpact;
 use App\Ai\Agents\CustomResearch;
+use App\Ai\Agents\MetricsDiscovery;
 use Spatie\Browsershot\Browsershot;
 
 use Illuminate\Support\Facades\Auth;
@@ -267,6 +271,8 @@ class ReportController extends Controller
 
             $pdfContentArr = [];
             $csvContentArr = [];
+            $pgsqlContentArr = [];
+            $pgsqlFinalArr = [];
             $websiteContentArr = [];
             foreach ($allFiles as $file) {
                 if ($file->type === 'application/pdf') {
@@ -288,39 +294,19 @@ class ReportController extends Controller
                     ];
                 }
                 if ($file->type === 'text/csv') {
-                    $filePath = storage_path('app/private/' . $file->url);
 
-                    try {
-                        // Create reader and assume first row is header
-                        $csv = Reader::createFromPath($filePath, 'r');
-                        $csv->setHeaderOffset(0);
-                        $csv->setEscape('');
-
-                        $stmt = new Statement()
-                            ->limit(1000);
-
-                        $records = $stmt->process($csv);
-                        // return response()->json($records);
-                        // Convert records iterator to array of associative arrays
-                        // return $records = iterator_to_array($csv->getRecords(), false);
-                    } catch (\League\Csv\Exception $e) {
-                        // Fallback: try a simple parse if the CSV has no header or parsing fails
-                        try {
-                            $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-                            $records = array_map(function ($line) {
-                                return str_getcsv($line);
-                            }, $lines);
-                        } catch (\Exception $e2) {
-                            $records = ['error' => 'Could not parse CSV: ' . $e2->getMessage()];
-                        }
-                    } catch (\Exception $e) {
-                        $records = ['error' => 'Could not read CSV: ' . $e->getMessage()];
+                    if ($file->is_csv_data_type_table_populated) {
+                        // return $project->schema_name.$file->csv_data_type_table_name;
+                        $csvDTTableService = new CsvDTTableService();
+                        $pgsqlContentArr['schema_name'] = $project->schema_name;
+                        $pgsqlContentArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlContentArr['table_schema'] = $file->projectDataCsvs;
+                        $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
+                        $pgsqlFinalArr[] = $pgsqlContentArr;
+                    } else {
+                        $csvDataSourceService = new CsvDataSourceService();
+                        $csvContentArr[] = $csvDataSourceService->getDataFromCsvforDashboardCreate($file);
                     }
-
-                    $csvContentArr[] = [
-                        'csv_filename' => $file->name ?? basename($file->system_name),
-                        'csv_data' => $records,
-                    ];
                 }
 
                 if ($file->type === 'website') {
@@ -367,11 +353,11 @@ class ReportController extends Controller
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
                 'website_urls' => $websiteContentArr,
-                'pgsql_tables' => null,
+                'pgsql_tables' => $pgsqlFinalArr,
             ];
 
 
-            return $jsonData = json_encode($input_data);
+            $jsonData = json_encode($input_data);
             // File discovery
             // create dashboard based on the insights from file discovery agent
 
@@ -388,7 +374,34 @@ class ReportController extends Controller
                     );
 
                 $discovery_string = (string) $discovery;
-                sleep(60);
+                
+
+                $analysisPlan = (new AnalysisPlanning)->forUser($request->user())
+                    ->prompt(
+                        'Here are the summaries of the data sources...\n\n' . $discovery_string.'\n\n Here is the sample data from the sources...' . $jsonData,
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+
+                $analysisPlanString = (string) $analysisPlan;
+                
+
+                $metrics_sql = (new MetricsDiscovery)->forUser($request->user())
+                    ->prompt(
+                        'Here is the data analysis plan...\n\n' . $analysisPlanString.'\n\n Here is the sample data and the postgres table schemafrom the sources...' . $jsonData,
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+                $metrics_sql_string = (string) $metrics_sql;
+                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
+                return $promptDecoded['metrics'] ?? null;
+                $nextAgentPrompt = is_array($promptDecoded) ? ($promptDecoded['next_agent_prompt'] ?? null) : null;
                 $prompt_dd = (new CreatePrompt5dImpact)->forUser($request->user())
                     ->prompt(
                         'Here are the summary of the file and url contents...\n\n' . $discovery_string,
@@ -471,7 +484,7 @@ class ReportController extends Controller
 
             $result = $promptResponse;
 
-            
+
 
             if ($result === null) {
                 return response()->json([

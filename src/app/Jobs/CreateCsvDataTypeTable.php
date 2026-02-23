@@ -38,5 +38,9 @@ class CreateCsvDataTypeTable implements ShouldQueue
         $columns = $csvDTTableService->getCsvDataTypeTableColumns($this->projectData); 
         //create a new table with the name csv_data_type_table_name in project data
         $csvDTTableService->createCsvDataTypeTable($tableName, $schemaName, $columns);
+
+        //update project data and set is_csv_data_type_table_created to true
+        $this->projectData->is_csv_data_type_table_created = true;
+        $this->projectData->save();
     }
 }

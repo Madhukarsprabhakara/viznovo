@@ -66,4 +66,10 @@ class ProjectData extends Model
             DB::connection($connection)->statement('DROP TABLE IF EXISTS "' . $schemaName . '"."' . $tableName . '"');
         }
     }
+    public function projectDataCsvs()
+    {
+        return  $this->hasMany(ProjectDataCsv::class)
+        ->select(['csv_header','db_column','csv_data_type_id'])
+        ->with(['csvDataType:id,csv_type_key'])->where('table_type', 'dt_table'); // pick columns from csv_data_types
+    }
 }

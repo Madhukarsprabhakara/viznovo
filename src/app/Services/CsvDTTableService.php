@@ -277,5 +277,48 @@ class CsvDTTableService
 
         return $inserted;
     }
-    
+    public function getDataTypeTableRecords($schemaName, $tableName)
+    {
+        $schemaName = strtolower(trim((string) $schemaName));
+        $tableName = strtolower(trim((string) $tableName));
+
+        if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
+            throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
+        }
+
+        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
+            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
+        }
+
+        $qualifiedTable = $schemaName . '.' . $tableName;
+
+        $connection = DB::getDefaultConnection();
+        if (DB::connection($connection)->getDriverName() !== 'pgsql') {
+            throw new InvalidArgumentException('getDataTypeTableRecords only supports pgsql; got ' . DB::connection($connection)->getDriverName());
+        }
+
+        if (!Schema::connection($connection)->hasTable($qualifiedTable)) {
+            throw new InvalidArgumentException('Target table does not exist: ' . $qualifiedTable);
+        }
+
+        $hasIdColumn = DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->where('column_name', 'id')
+            ->exists();
+
+        $query = DB::connection($connection)->table($qualifiedTable);
+        if ($hasIdColumn) {
+            $query->orderBy('id', 'desc');
+        }
+
+        return $query
+            ->limit(10)
+            ->get()
+            ->map(function ($item) {
+                return (array) $item;
+            })
+            ->toArray();
+    }
 }
