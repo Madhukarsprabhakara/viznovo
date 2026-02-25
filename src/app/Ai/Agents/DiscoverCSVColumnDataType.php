@@ -18,7 +18,7 @@ class DiscoverCSVColumnDataType implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return 'You are a helpful data engineer tasked with identifying the data types of CSV columns based on sample records. You will be provided with a JSON object containing the column names and sample records for each column. Your task is to analyze the sample data and determine the most appropriate data type for each column. The data types you can choose from are: "text-categorical", "text-open-ended", "timestamp", "numeric", "date". You should return JSON response in the following format:\n\n
+        return 'You are a helpful data engineer tasked with identifying the data types of CSV columns based on sample records. You will be provided with a JSON object containing the column names and sample records for each column. Your task is to analyze the sample data and determine the most appropriate data type for each column. Make sure you look at some records and do not rely only on the column names. The data types you can choose from are: "text-categorical", "text-open-ended", "timestamp", "numeric", "date". You should return JSON response in the following format:\n\n
         {
             "column_data_types": [
                 {

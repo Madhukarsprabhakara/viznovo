@@ -321,4 +321,81 @@ class CsvDTTableService
             })
             ->toArray();
     }
+
+    public function getOpenEndedResponses(ProjectData $projectData, $schemaName, $tableName): array
+    {
+       
+        $schemaName = strtolower(trim((string) $schemaName));
+        $tableName = strtolower(trim((string) $tableName));
+
+        if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
+            throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
+        }
+
+        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
+            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
+        }
+
+        $qualifiedTable = $schemaName . '.' . $tableName;
+
+        $connection = DB::getDefaultConnection();
+        if (DB::connection($connection)->getDriverName() !== 'pgsql') {
+            throw new InvalidArgumentException('getOpenEndedResponses only supports pgsql; got ' . DB::connection($connection)->getDriverName());
+        }
+
+        if (!Schema::connection($connection)->hasTable($qualifiedTable)) {
+            throw new InvalidArgumentException('Target table does not exist: ' . $qualifiedTable);
+        }
+        $openEndedDbColumns = $projectData->projectDataCsvs()
+            ->whereHas('csvDataType', function ($q) {
+                $q->where('csv_type_key', 'text-open-ended');
+            })
+            ->whereNotNull('db_column')
+            ->pluck('db_column')
+            ->map(function ($col) {
+                return strtolower(trim((string) $col));
+            })
+            ->filter(function (string $col) {
+                if ($col === '' || strlen($col) > 55) {
+                    return false;
+                }
+                if (preg_match('/^[0-9]/', $col) === 1) {
+                    return false;
+                }
+                return preg_match('/[^a-z0-9_]/', $col) !== 1;
+            })
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($openEndedDbColumns)) {
+            return [];
+        }
+
+        $existingColumns = DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->whereIn('column_name', $openEndedDbColumns)
+            ->pluck('column_name')
+            ->map(function ($col) {
+                return strtolower(trim((string) $col));
+            })
+            ->values()
+            ->toArray();
+
+        if (empty($existingColumns)) {
+            return [];
+        }
+
+        return DB::connection($connection)
+            ->table($qualifiedTable)
+            ->select($existingColumns)
+            ->get()
+            ->map(function ($item) {
+                return (array) $item;
+            })
+            ->toArray();
+    }
+    
 }

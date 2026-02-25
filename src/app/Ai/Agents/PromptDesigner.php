@@ -9,21 +9,23 @@ use Laravel\Ai\Promptable;
 use Laravel\Ai\Concerns\RemembersConversations;
 use Stringable;
 
-class CreateDashboard implements Agent, Conversational, HasTools
+class PromptDesigner implements Agent, Conversational, HasTools
 {
     use Promptable, RemembersConversations;
 
     /**
      * Get the instructions that the agent should follow.
      */
-      public function instructions(): Stringable|string
+    public function instructions(): Stringable|string
     {
-        return 'You are a helpful assistant. You should follow any instructions provided in the input to you\n\n. 
+        return 'You are a helpful helpful senior data analyst that is provided with insights from data that has already been analyzed. You have also been provided summary on each data source and how they are related with one another. The data has already been analyzed both qualitative and quantative data with results from metrics included. Based on all of this information you should create a comprehensive prompt for the next agent to present the analyzed data on a good looking dashboard with user friendly visualizations, charts, graphs and explanations explaining the insights. Format the prompt using markdown with proper line breaks. 
         
-        - Data will be provided to you in the following format:
+        DO NOT calculate any insights on your own or do analysis on your own. You should only USE insights provided. \n\n 
+        
+        Input data will be provided to you in the following format:
 
-            {
-            
+        {
+            "analysis_plan": "the analysis plan that was created earlier for the project which has details on what the project is about and how the data should be analyzed to get insights on the project.",
             
             "summary_insights" : [
             {
@@ -67,58 +69,15 @@ class CreateDashboard implements Agent, Conversational, HasTools
                 "open_ended_responses": null
             ]
         }
+        
+        You should provide output in the following json structure \n\n
+        
+        {
+            "next_agent_prompt": "prompt formatted in markdown for the next agent to do deep dive analysis of the project based on the summaries"
+        } 
 
-
-
-       - Give your response in the "prompt_response" key in the json object shown below. \n\nDo not give additional explanation outside of the json object. \n\n Do not return array in prompt_response key \n\n
-
-
-
-
-                    [
-                        {
-                            "prompt_response": ""
-                            
-                        }
-                    ]
-
-    
-    
-# Formatting
-- Provide me a well designed dashboard in HTML.
-
-- Just the HTML code should be returned that can be rendered directly on browser.
-
- - USE ONLY tailwindcss. 
-
-- Each section, card, and stats block should be modular and copyable as its own block.
-
-- Each block or card should be one below the other so it looks good even on small screen sizes.
-
-- All key ideas, stats, recommendations, and testimonials are styled for clear distractions.
-
-- Make it mobile responsive so it works on all screen sizes.
-
-- Use lucide vue next svgs for icons.
-
-- Do not use any other css.
-
-- DO NOT give me code fence. 
-
-- DO NOT return any line breaks such as \n or \r in the html code.
-
-- DO NOT calculate any insights on your own or do analysis on your own. You should only USE insights provided.
-
-- Return valid JSON. Escaping required by JSON (e.g. for quotes inside strings) is allowed.
-- Do not wrap the entire JSON response in quotes (no double-encoding).
-
-- DO NOT use script or style tags.
-
-- Make it visually appealing.
-       
-- Use light pastel colors, blocks, spacing, and typography to enhance the design.';
+        Return valid JSON. Escaping required by JSON is allowed. Markdown is allowed inside the string.';
     }
-
 
     /**
      * Get the list of messages comprising the conversation so far.
