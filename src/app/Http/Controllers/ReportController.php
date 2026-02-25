@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Ai\Agents\AnalysisPlanning;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -9,19 +10,170 @@ use App\Models\Project;
 use Spatie\PdfToText\Pdf;
 use Illuminate\Support\Str;
 use App\Services\AIService;
+use App\Services\CsvDataSourceService;
+use App\Services\CsvDTTableService;
+use App\Services\ProjectDataMetricsService;
 use App\Models\AIModel;
 use League\Csv\Reader;
 use League\Csv\Statement;
 use App\Ai\Agents\DiscoverFiles;
 use App\Ai\Agents\CreatePrompt5dImpact;
 use App\Ai\Agents\CustomResearch;
-use GuzzleHttp\Promise\Create;
+use App\Ai\Agents\MetricsDiscovery;
+use App\Ai\Agents\ManualModeMetricsDiscovery;
+use App\Ai\Agents\ManualModeQualitativeDataInsights;
+use App\Ai\Agents\PromptDesigner;
+use App\Ai\Agents\CreateDashboard;
+use App\Ai\Agents\QualitativeDataInsights;
 use Spatie\Browsershot\Browsershot;
 
 use Illuminate\Support\Facades\Auth;
 
 class ReportController extends Controller
 {
+    private function extractPromptResponse(mixed $decoded, string $rawText): ?string
+    {
+        if (is_array($decoded)) {
+            if (array_key_exists('prompt_response', $decoded) && is_string($decoded['prompt_response'])) {
+                return $decoded['prompt_response'];
+            }
+
+            if (array_is_list($decoded)) {
+                foreach ($decoded as $item) {
+                    if (is_array($item) && array_key_exists('prompt_response', $item) && is_string($item['prompt_response'])) {
+                        return $item['prompt_response'];
+                    }
+                }
+            }
+        }
+
+        $trimmed = trim($rawText);
+
+        // If the model returned raw HTML (full doc or fragment), accept it.
+        if (stripos($trimmed, '<html') !== false || stripos($trimmed, '<!doctype html') !== false) {
+            return $trimmed;
+        }
+
+        $firstTagPos = strpos($trimmed, '<');
+        $lastTagPos = strrpos($trimmed, '>');
+        if ($firstTagPos !== false && $lastTagPos !== false && $lastTagPos > $firstTagPos) {
+            $possibleHtml = trim(substr($trimmed, $firstTagPos, $lastTagPos - $firstTagPos + 1));
+            if ($possibleHtml !== '' && preg_match('/^\s*</', $possibleHtml) === 1) {
+                // Heuristic: if it ends with a closing tag or contains a div root, it's likely HTML.
+                if (preg_match('/<\/[a-zA-Z][^>]*>\s*$/', $possibleHtml) === 1 || stripos($possibleHtml, '<div') !== false) {
+                    return $possibleHtml;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function decodeAiJson(string $rawText): array
+    {
+        $trimmed = trim($rawText);
+
+        $candidates = [];
+        $seen = [];
+        $addCandidate = function (mixed $value) use (&$candidates, &$seen): void {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return;
+            }
+            if (isset($seen[$value])) {
+                return;
+            }
+            $seen[$value] = true;
+            $candidates[] = $value;
+        };
+
+        $addCandidate($trimmed);
+
+        // Strip common code fences.
+        $noFences = preg_replace('/^\s*```(?:json)?\s*/i', '', $trimmed);
+        $noFences = preg_replace('/\s*```\s*$/', '', (string) $noFences);
+        $noFences = trim((string) $noFences);
+        $addCandidate($noFences);
+
+        // Sometimes the whole payload is wrapped in quotes.
+        foreach ([$trimmed, $noFences] as $v) {
+            $v = trim((string) $v);
+            if (strlen($v) >= 2 && ((str_starts_with($v, '"') && str_ends_with($v, '"')) || (str_starts_with($v, "'") && str_ends_with($v, "'")))) {
+                $addCandidate(substr($v, 1, -1));
+            }
+        }
+
+        // Extract a likely JSON object/array from mixed content (e.g. trailing error text).
+        foreach ([$trimmed, $noFences] as $v) {
+            $v = (string) $v;
+
+            $objStart = strpos($v, '{');
+            $objEnd = strrpos($v, '}');
+            if ($objStart !== false && $objEnd !== false && $objEnd > $objStart) {
+                $addCandidate(substr($v, $objStart, $objEnd - $objStart + 1));
+            }
+
+            $arrStart = strpos($v, '[');
+            $arrEnd = strrpos($v, ']');
+            if ($arrStart !== false && $arrEnd !== false && $arrEnd > $arrStart) {
+                $addCandidate(substr($v, $arrStart, $arrEnd - $arrStart + 1));
+            }
+        }
+
+        // Attempt to repair the common invalid pattern: [{""prompt_response"":""...""}]
+        foreach ($candidates as $candidate) {
+            if (str_contains($candidate, '""')) {
+                $addCandidate(str_replace('""', '"', $candidate));
+            }
+        }
+
+        $lastError = null;
+
+        // Try decoding each candidate.
+        foreach ($candidates as $candidate) {
+            $candidate = trim((string) $candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            $decoded = json_decode($candidate, true);
+            $error = json_last_error();
+            $errorMessage = json_last_error_msg();
+            $lastError = $errorMessage;
+
+            if ($error !== JSON_ERROR_NONE) {
+                continue;
+            }
+
+            // Some providers / gateways may return JSON as a quoted string (double-encoded).
+            if (is_string($decoded)) {
+                $decoded2 = json_decode($decoded, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return [$decoded2, null];
+                }
+            }
+
+            // Sometimes JSON is returned as a list of JSON strings: ["{...}"]
+            if (is_array($decoded) && array_is_list($decoded)) {
+                foreach ($decoded as $item) {
+                    if (!is_string($item)) {
+                        continue;
+                    }
+                    $itemDecoded = json_decode($item, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        return [$itemDecoded, null];
+                    }
+                }
+            }
+
+            return [$decoded, null];
+        }
+
+        // Last error message based on raw trimmed input.
+        json_decode($trimmed, true);
+        return [null, $lastError ?: (json_last_error_msg() ?: 'Invalid JSON')];
+    }
+
     private function resolveChromeExecutablePath(): ?string
     {
         $candidates = [
@@ -107,7 +259,7 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    public function autoCreate(Request $request, Project $project, AIService $aiService)
+    public function autoCreate(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService)
     {
         //
         try {
@@ -125,7 +277,13 @@ class ReportController extends Controller
 
             $pdfContentArr = [];
             $csvContentArr = [];
+            $pgsqlContentArr = [];
+            $pgsqlFinalArr = [];
+            $pgsqlOpenEndedArr = [];
+            $pgsqlOpenEndedFinalArr = [];
             $websiteContentArr = [];
+            $metricSqls = [];
+            $project_data_ids = [];
             foreach ($allFiles as $file) {
                 if ($file->type === 'application/pdf') {
                     // Adjust the disk and path as per your storage setup
@@ -146,39 +304,26 @@ class ReportController extends Controller
                     ];
                 }
                 if ($file->type === 'text/csv') {
-                    $filePath = storage_path('app/private/' . $file->url);
 
-                    try {
-                        // Create reader and assume first row is header
-                        $csv = Reader::createFromPath($filePath, 'r');
-                        $csv->setHeaderOffset(0);
-                        $csv->setEscape('');
-
-                        $stmt = new Statement()
-                            ->limit(1000);
-
-                        $records = $stmt->process($csv);
-                        // return response()->json($records);
-                        // Convert records iterator to array of associative arrays
-                        // return $records = iterator_to_array($csv->getRecords(), false);
-                    } catch (\League\Csv\Exception $e) {
-                        // Fallback: try a simple parse if the CSV has no header or parsing fails
-                        try {
-                            $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-                            $records = array_map(function ($line) {
-                                return str_getcsv($line);
-                            }, $lines);
-                        } catch (\Exception $e2) {
-                            $records = ['error' => 'Could not parse CSV: ' . $e2->getMessage()];
-                        }
-                    } catch (\Exception $e) {
-                        $records = ['error' => 'Could not read CSV: ' . $e->getMessage()];
+                    if ($file->is_csv_data_type_table_populated) {
+                        // return $project->schema_name.$file->csv_data_type_table_name;
+                        $csvDTTableService = new CsvDTTableService();
+                        $pgsqlContentArr['project_id'] = $project->id;
+                        $pgsqlContentArr['project_data_id'] = $file->id;
+                        $pgsqlContentArr['user_id'] = $file->user_id;
+                        $pgsqlContentArr['schema_name'] = $project->schema_name;
+                        $pgsqlContentArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlContentArr['table_schema'] = $file->projectDataCsvs;
+                        $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
+                        $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
+                        $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponses($file, $project->schema_name, $file->csv_data_type_table_name);
+                        $pgsqlFinalArr[] = $pgsqlContentArr;
+                        $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
+                    } else {
+                        $csvDataSourceService = new CsvDataSourceService();
+                        $csvContentArr[] = $csvDataSourceService->getDataFromCsvforDashboardCreate($file);
                     }
-
-                    $csvContentArr[] = [
-                        'csv_filename' => $file->name ?? basename($file->system_name),
-                        'csv_data' => $records,
-                    ];
                 }
 
                 if ($file->type === 'website') {
@@ -225,9 +370,15 @@ class ReportController extends Controller
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
                 'website_urls' => $websiteContentArr,
+                'pgsql_tables' => $pgsqlFinalArr,
+            ];
+            $qda = [
+                'pdf_content' => $pdfContentArr,
+                'website_urls' => $websiteContentArr,
+                'open_ended_responses' => $pgsqlOpenEndedFinalArr,
             ];
 
-
+            $jsonQda = json_encode($qda);
             $jsonData = json_encode($input_data);
             // File discovery
             // create dashboard based on the insights from file discovery agent
@@ -244,25 +395,95 @@ class ReportController extends Controller
                         timeout: 600,
                     );
 
-                $discovery_string = json_encode($discovery, true);
-                sleep(60);
-                $prompt_dd = (new CreatePrompt5dImpact)->forUser($request->user())
+                $discovery_string = (string) $discovery;
+
+
+                $analysisPlan = (new AnalysisPlanning)->forUser($request->user())
                     ->prompt(
-                        'Here are the summary of the file and url contents...\n\n' . $discovery_string,
+                        'Here are the summaries of the data sources...\n\n' . $discovery_string . '\n\n Here is the sample data from the sources...' . $jsonData,
                         provider: [
                             'openai' => 'gpt-5.2',
                             'gemini' => 'gemini-3-pro-preview',
                         ],
                         timeout: 600,
                     );
-                $prompt_array = json_decode($prompt_dd, true);
-                $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
+
+                $analysisPlanString = (string) $analysisPlan;
+
+                foreach ($input_data['pgsql_tables'] as $tableData) {
+                    $tableDataString = json_encode($tableData);
+                    $metrics_sql = (new MetricsDiscovery)->forUser($request->user())
+                        ->prompt(
+                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
+                            provider: [
+                                'openai' => 'gpt-5.2',
+                                'gemini' => 'gemini-3-pro-preview',
+                            ],
+                            timeout: 600,
+                        );
+                    $metrics_sql_string = (string) $metrics_sql;
+                    [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
+                    $promptDecoded['project_id'] = $project->id;
+                    $promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
+                    $promptDecoded['user_id'] = $tableData['user_id'] ?? null;
+                    $metricSqls[] = $promptDecoded ?? null;
+                    // You can further process each table's data here if needed
+                    // For example, you might want to summarize the schema or sample records
+                    $project_data_ids[] = $tableData['project_data_id'] ?? null;
+                }
+
+                $sqls = $projectDataMetricsService->store($metricSqls, $tableData['user_id']);
+
+                //Qualitative data analytics
+
+                $qdaInsights = (new QualitativeDataInsights)->forUser($request->user())
+                    ->prompt(
+                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+
+                $qdaInsightsString = (string) $qdaInsights;
+
+                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
+
+                // $qualitative_data['pdf_content'] = $input_data['pdf_content'];
+                // $qualitative_data['website_urls'] = $input_data['website_urls'];
+                // $qualitative_data['open_ended_responses'] = null;
+                $discovery_array = json_decode($discovery_string, true);
+                $analysisPlanArray = json_decode($analysisPlanString, true);
+                $data_for_prompt_design = [
+                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
+                    'datasource_summary' => $discovery_array['summary_insights'] ?? null,
+                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
+                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
+                ];
+                //loop through the pgsql tables and for each table ask the model to generate metrics and sql query
+
+                $prompt_designed = (new PromptDesigner)->forUser($request->user())
+                    ->prompt(
+                        'Here is all of the information gathered so far...\n\n' . json_encode($data_for_prompt_design),
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+
+                $promptDesignedString = (string) $prompt_designed;
+
+                $rawPromptDd = $promptDesignedString;
+                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($rawPromptDd);
+                $nextAgentPrompt = is_array($promptDecoded) ? ($promptDecoded['next_agent_prompt'] ?? null) : null;
 
                 $prompt = $nextAgentPrompt;
-                sleep(60); // Simulate a delay for processing
-                $response = (new CustomResearch)->forUser($request->user())
+
+                $response = (new CreateDashboard)->forUser($request->user())
                     ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
+                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
                         provider: [
                             'openai' => 'gpt-5.2',
                             'gemini' => 'gemini-3-pro-preview',
@@ -281,7 +502,7 @@ class ReportController extends Controller
                         timeout: 600,
                     );
 
-                $discovery_string = json_encode($discovery, true);
+                $discovery_string = (string) $discovery;
                 sleep(60);
                 $prompt_dd = (new CreatePrompt5dImpact)->forUser($request->user())
                     ->prompt(
@@ -292,8 +513,9 @@ class ReportController extends Controller
                         ],
                         timeout: 600,
                     );
-                $prompt_array = json_decode($prompt_dd, true);
-                $nextAgentPrompt = $prompt_array['next_agent_prompt'] ?? null;
+                $rawPromptDd = (string) $prompt_dd;
+                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($rawPromptDd);
+                $nextAgentPrompt = is_array($promptDecoded) ? ($promptDecoded['next_agent_prompt'] ?? null) : null;
 
                 $prompt = $nextAgentPrompt;
                 sleep(60); // Simulate a delay for processing
@@ -308,14 +530,9 @@ class ReportController extends Controller
                     );
             }
 
-            $decoded = json_decode((string) $response, true); // true => associative arrays
-
-            // Some providers / gateways may return JSON as a quoted string (double-encoded).
-            if (is_string($decoded)) {
-                $decoded = json_decode($decoded, true);
-            }
-
-            $promptResponse = is_array($decoded) ? ($decoded[0]['prompt_response'] ?? null) : null;
+            $rawResponseText = (string) $response;
+            [$decoded, $decodeError] = $this->decodeAiJson($rawResponseText);
+            $promptResponse = $this->extractPromptResponse($decoded, $rawResponseText);
             // return [
             //     'status' => 'success',
             //     'message' => 'Response generated successfully.',
@@ -331,13 +548,15 @@ class ReportController extends Controller
 
             $result = $promptResponse;
 
-            
+
 
             if ($result === null) {
                 return response()->json([
-                    'message' => 'Unsupported or missing model_key',
+                    'message' => 'Report could not be generated (AI response could not be parsed). Please try re-running the report.',
                     'model_key' => $request->model_key,
                     'next_agent_prompt' => $nextAgentPrompt,
+                    'decode_error' => $decodeError,
+                    'raw_response_preview' => Str::limit((string) $rawResponseText, 4000),
                 ], 422);
             }
 
@@ -351,7 +570,7 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    public function create(Request $request, Project $project, AIService $aiService)
+    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService)
     {
         //
         try {
@@ -369,7 +588,13 @@ class ReportController extends Controller
             $result = null;
             $pdfContentArr = [];
             $csvContentArr = [];
+            $pgsqlContentArr = [];
+            $pgsqlFinalArr = [];
+            $pgsqlOpenEndedArr = [];
+            $pgsqlOpenEndedFinalArr = [];
             $websiteContentArr = [];
+            $metricSqls = [];
+            $project_data_ids = [];
             foreach ($allFiles as $file) {
                 if ($file->type === 'application/pdf') {
                     // Adjust the disk and path as per your storage setup
@@ -390,39 +615,25 @@ class ReportController extends Controller
                     ];
                 }
                 if ($file->type === 'text/csv') {
-                    $filePath = storage_path('app/private/' . $file->url);
-
-                    try {
-                        // Create reader and assume first row is header
-                        $csv = Reader::createFromPath($filePath, 'r');
-                        $csv->setHeaderOffset(0);
-                        $csv->setEscape('');
-
-                        $stmt = new Statement()
-                            ->limit(1000);
-
-                        $records = $stmt->process($csv);
-                        // return response()->json($records);
-                        // Convert records iterator to array of associative arrays
-                        // return $records = iterator_to_array($csv->getRecords(), false);
-                    } catch (\League\Csv\Exception $e) {
-                        // Fallback: try a simple parse if the CSV has no header or parsing fails
-                        try {
-                            $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-                            $records = array_map(function ($line) {
-                                return str_getcsv($line);
-                            }, $lines);
-                        } catch (\Exception $e2) {
-                            $records = ['error' => 'Could not parse CSV: ' . $e2->getMessage()];
-                        }
-                    } catch (\Exception $e) {
-                        $records = ['error' => 'Could not read CSV: ' . $e->getMessage()];
+                    if ($file->is_csv_data_type_table_populated) {
+                        // return $project->schema_name.$file->csv_data_type_table_name;
+                        $csvDTTableService = new CsvDTTableService();
+                        $pgsqlContentArr['project_id'] = $project->id;
+                        $pgsqlContentArr['project_data_id'] = $file->id;
+                        $pgsqlContentArr['user_id'] = $file->user_id;
+                        $pgsqlContentArr['schema_name'] = $project->schema_name;
+                        $pgsqlContentArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlContentArr['table_schema'] = $file->projectDataCsvs;
+                        $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
+                        $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
+                        $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponses($file, $project->schema_name, $file->csv_data_type_table_name);
+                        $pgsqlFinalArr[] = $pgsqlContentArr;
+                        $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
+                    } else {
+                        $csvDataSourceService = new CsvDataSourceService();
+                        $csvContentArr[] = $csvDataSourceService->getDataFromCsvforDashboardCreate($file);
                     }
-
-                    $csvContentArr[] = [
-                        'csv_filename' => $file->name ?? basename($file->system_name),
-                        'csv_data' => $records,
-                    ];
                 }
 
                 if ($file->type === 'website') {
@@ -469,42 +680,152 @@ class ReportController extends Controller
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
                 'website_urls' => $websiteContentArr,
+                'pgsql_tables' => $pgsqlFinalArr,
+            ];
+            $qda = [
+                'pdf_content' => $pdfContentArr,
+                'website_urls' => $websiteContentArr,
+                'open_ended_responses' => $pgsqlOpenEndedFinalArr,
             ];
 
-
-            // return response()->json($input_data);
+            $jsonQda = json_encode($qda);
             $jsonData = json_encode($input_data);
 
 
             $prompt = $request->input('prompt');
-
+            $analysisPlanString = $prompt;
             if ($request->model_key == 'gpt-5') {
-                $response = (new CustomResearch)->forUser($request->user())
+
+                foreach ($input_data['pgsql_tables'] as $tableData) {
+                    $tableDataString = json_encode($tableData);
+                    $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
+                        ->prompt(
+                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
+                            provider: [
+                                'openai' => 'gpt-5.2',
+                                'gemini' => 'gemini-3-pro-preview',
+                            ],
+                            timeout: 600,
+                        );
+                    $metrics_sql_string = (string) $metrics_sql;
+                    [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
+                    $promptDecoded['project_id'] = $project->id;
+                    $promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
+                    $promptDecoded['user_id'] = $tableData['user_id'] ?? null;
+                    $metricSqls[] = $promptDecoded ?? null;
+                    // You can further process each table's data here if needed
+                    // For example, you might want to summarize the schema or sample records
+                    $project_data_ids[] = $tableData['project_data_id'] ?? null;
+                }
+
+                $sqls = $projectDataMetricsService->store($metricSqls, $tableData['user_id']);
+
+                //Qualitative data analytics
+
+                $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($request->user())
                     ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                        provider: 'openai',
-                        model: 'gpt-5.2',
+                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
+                        timeout: 600,
+                    );
+
+                $qdaInsightsString = (string) $qdaInsights;
+
+                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
+                $data_for_prompt_design = [
+                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
+
+                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
+                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
+                ];
+
+                $response = (new CreateDashboard)->forUser($request->user())
+                    ->prompt(
+                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
+                        provider: [
+                            'openai' => 'gpt-5.2',
+                            'gemini' => 'gemini-3-pro-preview',
+                        ],
                         timeout: 600,
                     );
             }
             if ($request->model_key == 'gemini-3-pro') {
-                $response = (new CustomResearch)->forUser($request->user())
+                foreach ($input_data['pgsql_tables'] as $tableData) {
+                    $tableDataString = json_encode($tableData);
+                    $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
+                        ->prompt(
+                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
+                            provider: [
+                                'gemini' => 'gemini-3-pro-preview',
+                                'openai' => 'gpt-5.2',
+
+                            ],
+                            timeout: 600,
+                        );
+                        sleep(60);
+                    $metrics_sql_string = (string) $metrics_sql;
+                    [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
+                    $promptDecoded['project_id'] = $project->id;
+                    $promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
+                    $promptDecoded['user_id'] = $tableData['user_id'] ?? null;
+                    $metricSqls[] = $promptDecoded ?? null;
+                    // You can further process each table's data here if needed
+                    // For example, you might want to summarize the schema or sample records
+                    $project_data_ids[] = $tableData['project_data_id'] ?? null;
+                }
+
+                $sqls = $projectDataMetricsService->store($metricSqls, $tableData['user_id']);
+
+                //Qualitative data analytics
+
+                $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($request->user())
                     ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                        provider: 'gemini',
-                        model: 'gemini-3-pro-preview',
+                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
+                        provider: [
+                            'gemini' => 'gemini-3-pro-preview',
+                            'openai' => 'gpt-5.2',
+
+                        ],
+                        timeout: 600,
+                    );
+                sleep(60); // Simulate a delay for processing
+                $qdaInsightsString = (string) $qdaInsights;
+
+                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
+                $data_for_prompt_design = [
+                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
+
+                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
+                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
+                ];
+
+                $response = (new CreateDashboard)->forUser($request->user())
+                    ->prompt(
+                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
+                        provider: [
+                            'gemini' => 'gemini-3-pro-preview',
+                            'openai' => 'gpt-5.2',
+
+                        ],
                         timeout: 600,
                     );
             }
 
-            $decoded = json_decode((string) $response, true); // true => associative arrays
+            $rawResponseText = (string) $response;
+            [$decoded, $decodeError] = $this->decodeAiJson($rawResponseText);
+            $promptResponse = $this->extractPromptResponse($decoded, $rawResponseText);
 
-            // Some providers / gateways may return JSON as a quoted string (double-encoded).
-            if (is_string($decoded)) {
-                $decoded = json_decode($decoded, true);
+            if ($promptResponse === null) {
+                return response()->json([
+                    'message' => 'Response generated but could not be parsed (invalid JSON from model).',
+                    'decode_error' => $decodeError,
+                    'raw_response_preview' => Str::limit((string) $rawResponseText, 4000),
+                ], 422);
             }
 
-            $promptResponse = is_array($decoded) ? ($decoded[0]['prompt_response'] ?? null) : null;
             return [
                 'status' => 'success',
                 'message' => 'Response generated successfully.',

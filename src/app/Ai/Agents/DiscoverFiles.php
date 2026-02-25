@@ -20,7 +20,7 @@ class DiscoverFiles implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return 'You are a helpful assistant that looks at project files and url contents and provides short summary about the data in each of these sources. These summaries will be used by another agent to do indepth  analysis of the project. Based on the summaries you should also provide a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive. You should provide output in the following json structure \n\n
+        return 'You are a helpful assistant that looks at database tables, project files and url contents and provides short summary about the data in each of these sources. These summaries will be used by another agent to do indepth  analysis of the project. If there are more than one data source, you should also provide a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive. You should provide output in the following json structure \n\n
         {
             "summary_insights" : [
             {
@@ -38,13 +38,16 @@ class DiscoverFiles implements Agent, Conversational, HasTools
             {
             "url": "url_2",
             "summary": "summary of url_2"
-            }
+            },
+            {
+            "pgsql_schema": "schema_name",
+            "pgsql_table": "table_name",
+            "summary": "summary of pgsql table data"
+            },
             ],
             "overall_with_relationships_summary": "a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive"
         } 
-            \n\n DO NOT return any line breaks such as \n or \r in the response.
-
-        DO NOT return escaped characters such as \", \', \\ etc.\n\n';
+            \n\n Return valid JSON. Escaping required by JSON is allowed.';
     }
 
     /**

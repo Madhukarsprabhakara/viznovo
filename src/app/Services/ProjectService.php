@@ -3,6 +3,8 @@
 namespace App\Services;
 use App\Models\Project;
 use App\Models\ProjectData;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 class ProjectService
 {
 
@@ -65,5 +67,31 @@ class ProjectService
         $projectData->save();
 
         return $projectData;
+    }
+    public function getProjectSchema(Project $project)
+    {
+        if (!$project->schema_name) {
+            $schemaName = Project::makeSchemaName($project->name, (int) $project->id);
+            $project->schema_name = $schemaName;
+            $project->saveQuietly();
+            $this->createSchemaForProject($schemaName);
+
+        }
+        return $project->schema_name;
+    }
+    public function createSchemaForProject($schemaName)
+    {
+        $connection = DB::connection();
+        if ($connection->getDriverName() !== 'pgsql') {
+            return;
+        }
+
+        $schemaName = strtolower($schemaName);
+
+        if (preg_match('/^[a-z0-9](?:[a-z0-9_]*[a-z0-9])?_[0-9]+$/', $schemaName) !== 1) {
+            throw new InvalidArgumentException('Invalid schema name format: ' . $schemaName);
+        }
+
+        DB::statement('CREATE SCHEMA IF NOT EXISTS "' . $schemaName . '"');
     }
 }
