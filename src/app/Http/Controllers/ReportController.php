@@ -365,7 +365,7 @@ class ReportController extends Controller
 
 
 
-           
+
             $input_data = [
                 'pdf_content' => $pdfContentArr,
                 'csv_content' => $csvContentArr,
@@ -447,7 +447,7 @@ class ReportController extends Controller
                     );
 
                 $qdaInsightsString = (string) $qdaInsights;
-               
+
                 $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
 
                 // $qualitative_data['pdf_content'] = $input_data['pdf_content'];
@@ -733,11 +733,11 @@ class ReportController extends Controller
                     );
 
                 $qdaInsightsString = (string) $qdaInsights;
-               
+
                 $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
                 $data_for_prompt_design = [
                     // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
-                    
+
                     'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
                     'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
                 ];
@@ -753,11 +753,63 @@ class ReportController extends Controller
                     );
             }
             if ($request->model_key == 'gemini-3-pro') {
-                $response = (new CustomResearch)->forUser($request->user())
+                foreach ($input_data['pgsql_tables'] as $tableData) {
+                    $tableDataString = json_encode($tableData);
+                    $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
+                        ->prompt(
+                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
+                            provider: [
+                                'gemini' => 'gemini-3-pro-preview',
+                                'openai' => 'gpt-5.2',
+
+                            ],
+                            timeout: 600,
+                        );
+                        sleep(60);
+                    $metrics_sql_string = (string) $metrics_sql;
+                    [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
+                    $promptDecoded['project_id'] = $project->id;
+                    $promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
+                    $promptDecoded['user_id'] = $tableData['user_id'] ?? null;
+                    $metricSqls[] = $promptDecoded ?? null;
+                    // You can further process each table's data here if needed
+                    // For example, you might want to summarize the schema or sample records
+                    $project_data_ids[] = $tableData['project_data_id'] ?? null;
+                }
+
+                $sqls = $projectDataMetricsService->store($metricSqls, $tableData['user_id']);
+
+                //Qualitative data analytics
+
+                $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($request->user())
                     ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
-                        provider: 'gemini',
-                        model: 'gemini-3-pro-preview',
+                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
+                        provider: [
+                            'gemini' => 'gemini-3-pro-preview',
+                            'openai' => 'gpt-5.2',
+
+                        ],
+                        timeout: 600,
+                    );
+                sleep(60); // Simulate a delay for processing
+                $qdaInsightsString = (string) $qdaInsights;
+
+                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
+                $data_for_prompt_design = [
+                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
+
+                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
+                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
+                ];
+
+                $response = (new CreateDashboard)->forUser($request->user())
+                    ->prompt(
+                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
+                        provider: [
+                            'gemini' => 'gemini-3-pro-preview',
+                            'openai' => 'gpt-5.2',
+
+                        ],
                         timeout: 600,
                     );
             }
