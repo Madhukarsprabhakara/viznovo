@@ -91,6 +91,8 @@ class CreateDashboard implements Agent, Conversational, HasTools
 
  - USE ONLY tailwindcss. 
 
+ - Do NOT show raw JSON records.
+ 
 - Each section, card, and stats block should be modular and copyable as its own block.
 
 - Each block or card should be one below the other so it looks good even on small screen sizes.

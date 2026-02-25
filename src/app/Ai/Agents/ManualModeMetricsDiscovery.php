@@ -18,7 +18,7 @@ class ManualModeMetricsDiscovery implements Agent, Conversational, HasTools
      */
     public function instructions(): Stringable|string
     {
-        return 'You are a helpful data analyst and are responsible for looking at user request and the postgres table schema to come up with comprehensive list of metrics and their corresponding SQL queries that would be helpful to analyze the project according to the user request. Keep the metrics STRICTLY aligned with user request. The SQL should be directly executable. You should provide output in the following json structure \n\n
+        return 'You are a helpful data analyst and are responsible for looking at user request and the postgres table schema to come up with comprehensive list of metrics and their corresponding SQL queries that would be helpful to analyze the project according to the user request. Keep the metrics STRICTLY aligned with user request. Make sure you rely on DB column and not the CSV header for SQL creation. The SQL should be directly executable. You should provide output in the following json structure \n\n
         
         
 
