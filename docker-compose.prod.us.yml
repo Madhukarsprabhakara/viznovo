@@ -86,6 +86,9 @@ services:
       context: .
       dockerfile: supervisord-prod.dockerfile
     container_name: irep_supervisord
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
     depends_on:
       - irep_db
     networks:
