@@ -83,8 +83,11 @@ class ManualModeQualitativeDataInsights implements Agent, Conversational, HasToo
             ],
                 
             
-        }
+        } \n\n
         
+        DO NOT FOCUS on Quantitative data analysis part of the user request, if present. \n\n
+
+        Quantitative data analysis is important but we will focus on that separately. \n\n
         
         ';
     }

@@ -39,8 +39,12 @@ class ManualModeMetricsDiscovery implements Agent, Conversational, HasTools
             
         I am using PostgreSQL databae engine.\n\n
 
+        DO NOT FOCUS on Qulitative data analysis part of the user request, if present. \n\n
+
+        Qualitative data analysis is important but we will focus on that in the next steps. \n\n
+
         Make sure to use the right schema name and table name in the SQL query.\n\n
-        
+
         Assume the SQL engine doesn’t allow referencing a SELECT-list alias within another expression in the same query block. \n\n
         
         Fix by either (a) repeating the full expression instead of the alias, or (b) wrapping the query in a subquery/CTE that computes the alias, then reference the alias in an outer query for ordering/filtering/grouping. \n\n
