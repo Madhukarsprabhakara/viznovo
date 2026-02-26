@@ -25,30 +25,7 @@ class CreateDashboard implements Agent, Conversational, HasTools
             {
             
             
-            "summary_insights" : [
-            {
-            "file_name": "file_1",
-            "summary": "summary of file_1"
-            },
-            {
-            "file_name": "file_2",
-            "summary": "summary of file_2"
-            },
-            {
-            "url": "url_1",
-            "summary": "summary of url_1"
-            },
-            {
-            "url": "url_2",
-            "summary": "summary of url_2"
-            },
-            {
-            "pgsql_schema": "",
-            "pgsql_table":"",
-            "summary": ""
-            }
-            ],
-            "overall_with_relationships_summary": "a short summary on if the data across the sources is related so it can be used by the other agent to do a deep dive",
+            
             "metrics_insights": [
                 {
                     "metric_name": "name of the metric",
@@ -61,10 +38,28 @@ class CreateDashboard implements Agent, Conversational, HasTools
                     "result": "the sql query to get the metric value based on the analysis plan"
                 }
             ],
-            "qualitative_data_raw": [
+            "qualitative_insights": [
                 "pdf_content": [],
                 "website_urls": [],
-                "open_ended_responses": null
+                "open_ended_responses": [
+                {
+                    "question 1": "the open ended question that was asked in the survey",
+                    "insights": [
+                        "insight 1 based on the open ended response",
+                        "insight 2 based on the open ended response"
+                    
+                    ]
+                },
+                {
+                    "question 2": "the open ended question that was asked in the survey",
+                    "insights": [
+                        "insight 1 based on the open ended response",
+                        "insight 2 based on the open ended response"
+                    
+                    ]
+                }
+                
+                ]
             ]
         }
 

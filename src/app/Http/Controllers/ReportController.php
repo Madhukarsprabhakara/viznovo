@@ -797,8 +797,8 @@ class ReportController extends Controller
                     );
                 sleep(60); // Simulate a delay for processing
                 $qdaInsightsString = (string) $qdaInsights;
-
-                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
+                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($qdaInsightsString);
+                $qdaInsightsDecoded = $promptDecoded ?? [];
                 $data_for_prompt_design = [
                     // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
 
