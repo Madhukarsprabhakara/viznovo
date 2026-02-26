@@ -12,6 +12,44 @@ class CsvDTTableService
 {
 
     /**
+     * JSON encoding in PHP will fail if the payload contains INF/-INF/NaN floats.
+     * Normalize those values (and nested arrays) to be JSON-safe.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    private function normalizeForJson($value)
+    {
+        if (is_float($value)) {
+            if (is_nan($value) || is_infinite($value)) {
+                return null;
+            }
+            return $value;
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $k => $v) {
+                $value[$k] = $this->normalizeForJson($v);
+            }
+            return $value;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function normalizeRowForJson(array $row): array
+    {
+        foreach ($row as $k => $v) {
+            $row[$k] = $this->normalizeForJson($v);
+        }
+        return $row;
+    }
+
+    /**
      * @return array<int, array{db_column:string, laravel_type:?string}>
      */
     public function getCsvDataTypeTableColumns(ProjectData $projectData): array
@@ -184,7 +222,7 @@ class CsvDTTableService
             ->table($qualifiedTable)
             ->get()
             ->map(function ($item) {
-                return (array) $item;
+                return $this->normalizeRowForJson((array) $item);
             })
             ->toArray();
     }
@@ -308,7 +346,18 @@ class CsvDTTableService
             ->where('column_name', 'id')
             ->exists();
 
+        
         $query = DB::connection($connection)->table($qualifiedTable);
+        // return DB::table($qualifiedTable)
+        //     ->when($hasIdColumn, function ($q) {
+        //         return $q->orderBy('id', 'desc');
+        //     })
+        //     ->limit(10)
+        //     ->get()
+        //     ->map(function ($item) {
+        //         return (array) $item;
+        //     })
+        //     ->toArray();
         if ($hasIdColumn) {
             $query->orderBy('id', 'desc');
         }
@@ -317,7 +366,7 @@ class CsvDTTableService
             ->limit(10)
             ->get()
             ->map(function ($item) {
-                return (array) $item;
+                return $this->normalizeRowForJson((array) $item);
             })
             ->toArray();
     }
@@ -393,7 +442,7 @@ class CsvDTTableService
             ->select($existingColumns)
             ->get()
             ->map(function ($item) {
-                return (array) $item;
+                return $this->normalizeRowForJson((array) $item);
             })
             ->toArray();
     }

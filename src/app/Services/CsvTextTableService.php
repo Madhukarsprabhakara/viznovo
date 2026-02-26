@@ -66,8 +66,6 @@ class CsvTextTableService
         });
 
         return true;
-
-        
     }
     public function getRecords(ProjectData $projectData)
     {
@@ -92,6 +90,7 @@ class CsvTextTableService
             }
         } catch (\Throwable $e) {
             // ignore and fall back
+            return [$e->getMessage()];
         }
         if ($resolvedPath === null) {
             $candidate = storage_path('app/' . ltrim($url, '/'));
@@ -123,8 +122,13 @@ class CsvTextTableService
             $csv = Reader::createFromPath($resolvedPath, 'r');
             $csv->setHeaderOffset(0);
             $headers = $csv->getHeader();
+            // $duplicates = collect($headers)
+            //     ->duplicates()   // returns the duplicate items (may include repeats depending on data)
+            //     ->unique()
+            //     ->values();
+            // dd($duplicates);
         } catch (\Throwable $e) {
-            return [];
+            return [$e->getMessage()];
         }
 
         $normalize = function (string $value): string {
@@ -173,7 +177,7 @@ class CsvTextTableService
                 $rows[] = $row;
             }
         } catch (\Throwable $e) {
-            return [];
+            return [$e->getMessage()];
         }
 
         return $rows;
@@ -317,5 +321,4 @@ class CsvTextTableService
             })
             ->toArray();
     }
-    
 }

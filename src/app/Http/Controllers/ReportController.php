@@ -616,8 +616,11 @@ class ReportController extends Controller
                 }
                 if ($file->type === 'text/csv') {
                     if ($file->is_csv_data_type_table_populated) {
+                        
+                        
                         // return $project->schema_name.$file->csv_data_type_table_name;
                         $csvDTTableService = new CsvDTTableService();
+                        // return $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlContentArr['project_id'] = $project->id;
                         $pgsqlContentArr['project_data_id'] = $file->id;
                         $pgsqlContentArr['user_id'] = $file->user_id;
@@ -752,12 +755,13 @@ class ReportController extends Controller
                         timeout: 600,
                     );
             }
+            
             if ($request->model_key == 'gemini-3-pro') {
                 foreach ($input_data['pgsql_tables'] as $tableData) {
                     $tableDataString = json_encode($tableData);
                     $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
                         ->prompt(
-                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
+                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data along with the schema name and table name and the postgres table schema from the sources...' . $tableDataString,
                             provider: [
                                 'gemini' => 'gemini-3-pro-preview',
                                 'openai' => 'gpt-5.2',
