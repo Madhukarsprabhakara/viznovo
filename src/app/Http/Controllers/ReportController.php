@@ -390,7 +390,7 @@ class ReportController extends Controller
                         'Here are the files and its contents...\n\n' . $jsonData,
                         provider: [
                             'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                         ],
                         timeout: 600,
                     );
@@ -403,7 +403,7 @@ class ReportController extends Controller
                         'Here are the summaries of the data sources...\n\n' . $discovery_string . '\n\n Here is the sample data from the sources...' . $jsonData,
                         provider: [
                             'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                         ],
                         timeout: 600,
                     );
@@ -417,7 +417,7 @@ class ReportController extends Controller
                             'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
                             provider: [
                                 'openai' => 'gpt-5.2',
-                                'gemini' => 'gemini-3-pro-preview',
+                                'gemini' => 'gemini-3.1-pro-preview',
                             ],
                             timeout: 600,
                         );
@@ -441,7 +441,7 @@ class ReportController extends Controller
                         'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
                         provider: [
                             'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                         ],
                         timeout: 600,
                     );
@@ -468,7 +468,7 @@ class ReportController extends Controller
                         'Here is all of the information gathered so far...\n\n' . json_encode($data_for_prompt_design),
                         provider: [
                             'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                         ],
                         timeout: 600,
                     );
@@ -486,7 +486,7 @@ class ReportController extends Controller
                         'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
                         provider: [
                             'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                         ],
                         timeout: 600,
                     );
@@ -496,7 +496,7 @@ class ReportController extends Controller
                     ->prompt(
                         'Here are the files and its contents...\n\n' . $jsonData,
                         provider: [
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
                         ],
                         timeout: 600,
@@ -508,7 +508,7 @@ class ReportController extends Controller
                     ->prompt(
                         'Here are the summary of the file and url contents...\n\n' . $discovery_string,
                         provider: [
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
                         ],
                         timeout: 600,
@@ -523,7 +523,7 @@ class ReportController extends Controller
                     ->prompt(
                         'Here are the instructions...\n\n' . $prompt . ' and the data:' . $jsonData,
                         provider: [
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
                         ],
                         timeout: 600,
@@ -706,7 +706,7 @@ class ReportController extends Controller
                             'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
                             provider: [
                                 'openai' => 'gpt-5.2',
-                                'gemini' => 'gemini-3-pro-preview',
+                                'gemini' => 'gemini-3.1-pro-preview',
                             ],
                             timeout: 600,
                         );
@@ -730,7 +730,7 @@ class ReportController extends Controller
                         'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
                         provider: [
                             'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                         ],
                         timeout: 600,
                     );
@@ -750,7 +750,7 @@ class ReportController extends Controller
                         'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
                         provider: [
                             'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                         ],
                         timeout: 600,
                     );
@@ -763,7 +763,7 @@ class ReportController extends Controller
                         ->prompt(
                             'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data along with the schema name and table name and the postgres table schema from the sources...' . $tableDataString,
                             provider: [
-                                'gemini' => 'gemini-3-pro-preview',
+                                'gemini' => 'gemini-3.1-pro-preview',
                                 'openai' => 'gpt-5.2',
 
                             ],
@@ -789,7 +789,7 @@ class ReportController extends Controller
                     ->prompt(
                         'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
                         provider: [
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
 
                         ],
@@ -810,7 +810,7 @@ class ReportController extends Controller
                     ->prompt(
                         'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
                         provider: [
-                            'gemini' => 'gemini-3-pro-preview',
+                            'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
 
                         ],
