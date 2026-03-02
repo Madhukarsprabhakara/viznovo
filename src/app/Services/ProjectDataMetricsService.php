@@ -7,21 +7,24 @@ use App\Models\ProjectDataMetric;
 
 class ProjectDataMetricsService
 {
-    public function store(array $metricsArray, int $userId)
+    public function store(array $metricsArray, int $userId, ?int $reportId = null)
     {
         try {
             $metricWithResults = [];
             $now = now();
+
+            if ($reportId !== null) {
+                DB::table('project_data_metrics')->where('report_id', '=', $reportId)->delete();
+            }
+
             foreach ($metricsArray as $metricData) {
-                DB::table('project_data_metrics')->where('project_data_id', '=', $metricData['project_data_id'])->delete();
                 foreach (($metricData['metrics'] ?? []) as $metric) {
                     if (!is_array($metric)) {
                         continue;
                     }
-                   
-                    $metric['user_id'] = $metricData['user_id'] ?? $userId;
-                    $metric['project_id'] = $metricData['project_id'];
-                    $metric['project_data_id'] = $metricData['project_data_id'];
+
+                    $metricUserId = (int) ($metricData['user_id'] ?? $userId);
+                    $metricProjectId = $metricData['project_id'] ?? null;
 
                     $sqlQuery = $metric['sql_query'] ?? '';
                     if (is_array($sqlQuery)) {
@@ -30,12 +33,22 @@ class ProjectDataMetricsService
                     $sqlQuery = (string) $sqlQuery;
 
                     [$result, $error] = $this->executeSql($sqlQuery);
-                    $metric['result'] = $result !== null ? json_encode($result) : null;
-                    $metric['error'] = $error;
-                    $metric['is_successful'] = $error === null;
-                    $metric['created_at'] = $now;
-                    $metric['updated_at'] = $now;
-                    $metricWithResults[] = $metric;
+
+                    $row = [
+                        'report_id' => $reportId,
+                        'user_id' => $metricUserId,
+                        'project_id' => $metricProjectId,
+                        'metric_name' => $metric['metric_name'] ?? null,
+                        'description' => $metric['description'] ?? null,
+                        'sql_query' => $sqlQuery,
+                        'result' => $result !== null ? json_encode($result) : null,
+                        'error' => $error,
+                        'is_successful' => $error === null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+
+                    $metricWithResults[] = $row;
                 }
             }
 
@@ -71,8 +84,10 @@ class ProjectDataMetricsService
         }
         // Logic to execute the SQL query and return results
     }
-    public function getDataForPromptDesign(array $projectDataIds)
+    public function getDataForPromptDesign(int $reportId)
     {
-        return ProjectDataMetric::whereIn('project_data_id', $projectDataIds)->where('is_successful', true)->get(['metric_name', 'description', 'result']);
+        return ProjectDataMetric::where('report_id', $reportId)
+            ->where('is_successful', true)
+            ->get(['metric_name', 'description', 'result']);
     }
 }

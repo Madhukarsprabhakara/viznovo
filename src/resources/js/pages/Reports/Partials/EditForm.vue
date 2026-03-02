@@ -11,9 +11,11 @@ const modelList = page.props.aiModels ?? []
 
 const LOCAL_PROMPT_KEY = (projectId, reportId) => `reportPrompt_${projectId}_${reportId}`
 
+const title = ref('')
 const prompt = ref('')
 const reportHtml = ref('')
 const loading = ref(false)
+const errorMessage = ref('')
 
 // NEW: selected model "key" (not id)
 const selectedModelKey = ref('')
@@ -21,6 +23,7 @@ const selectedModelKey = ref('')
 const saveGeneratedReport = useForm({
   project_id: projectId,
   report_id: report.id,
+  title: '',
   prompt: '',
   result: '',
   model_key: '' // optional: include if you persist it on update
@@ -29,6 +32,7 @@ const saveGeneratedReport = useForm({
 // Load initial values from server or localStorage
 onMounted(() => {
   const saved = localStorage.getItem(LOCAL_PROMPT_KEY(projectId, report.id))
+  title.value = report.title ?? ''
   prompt.value = saved ?? report.prompt ?? ''
   reportHtml.value = report.result ?? ''
 
@@ -53,21 +57,26 @@ function clearPrompt() {
 
 async function testRun() {
   loading.value = true
+  errorMessage.value = ''
   try {
     const response = await axios.post(`/projects/${projectId}/greports`, {
+      report_id: report.id,
+      title: title.value,
       prompt: prompt.value,
       model_key: selectedModelKey.value // <-- send selected model key
       // If your backend expects `key` instead, rename to: key: selectedModelKey.value
     })
     reportHtml.value = response.data.data
   } catch (error) {
-    // handle error
+    const responseData = error?.response?.data
+    errorMessage.value = responseData?.message ?? error?.message ?? 'Something went wrong. Please try again.'
   } finally {
     loading.value = false
   }
 }
 
 function saveReport() {
+  saveGeneratedReport.title = title.value
   saveGeneratedReport.prompt = prompt.value
   saveGeneratedReport.result = reportHtml.value
   saveGeneratedReport.model_key = selectedModelKey.value
@@ -129,11 +138,18 @@ function saveReport() {
       </div>
 
       <!-- Actions -->
+      <div
+        v-if="errorMessage"
+        class="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800 whitespace-pre-wrap"
+      >
+        {{ errorMessage }}
+      </div>
+
       <div class="w-full bg-white p-4 flex gap-2 z-10 mt-4">
         <button
           class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
           @click="testRun"
-          :disabled="loading"
+          :disabled="loading || !title || !prompt"
         >
           <svg
             v-if="loading"
@@ -166,10 +182,17 @@ function saveReport() {
         <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]" v-html="reportHtml" />
       </div>
 
-      <div class="w-full bg-white p-4 flex z-10 mt-4">
+      <div class="w-full bg-white p-4 border-t flex items-center gap-2 z-10 mt-4">
+        <input
+          v-model="title"
+          type="text"
+          placeholder="Dashboard Name"
+          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+        />
+
         <button
           class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          :disabled="!reportHtml"
+          :disabled="!reportHtml || !title"
           @click="saveReport"
         >
           Save Report

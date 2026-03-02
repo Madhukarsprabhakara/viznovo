@@ -187,6 +187,7 @@ const modelList = computed(() => page.props.aiModels ?? [])
 const selectedModelKey = ref('')
 
 const saveGeneratedReport = useForm({
+  report_id: null,
   project_id: projectId,
   is_automatic: 1,
   prompt: '',
@@ -201,6 +202,7 @@ const prompt = ref('')
 const selectedTemplateKey = ref('')
 const reportHtml = ref('')
 const reportName = ref('')
+const reportId = ref(null)
 const loading = ref(false)
 const errorMessage = ref('')
 
@@ -258,9 +260,15 @@ async function testRun() {
       template_id: selectedTemplateKey.value,
       // Keep `prompt` for backwards compatibility if backend still expects it
       prompt: selectedTemplateKey.value,
+      title: reportName.value || null,
       model_key: selectedModelKey.value, // <-- sends selected model key to server
+      report_id: reportId.value,
       // If your backend expects `key` instead, rename to: key: selectedModelKey.value
     })
+
+    if (response?.data?.report_id) {
+      reportId.value = response.data.report_id
+    }
 
     prompt.value = response?.data?.next_agent_prompt ?? ''
 
@@ -304,6 +312,7 @@ function saveReport() {
   saveGeneratedReport.title = reportName.value
   saveGeneratedReport.model_key = selectedModelKey.value
   saveGeneratedReport.is_automatic = 1
+  saveGeneratedReport.report_id = reportId.value
 
   saveGeneratedReport.post(`/projects/${projectId}/sautoreports`, {
     onSuccess: () => {
