@@ -358,7 +358,7 @@ class ReportController extends Controller
                         $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
                         $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
-                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponses($file, $project->schema_name, $file->csv_data_type_table_name);
+                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponsesForIncrementalAnalysis($file, $project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlFinalArr[] = $pgsqlContentArr;
                         $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
                     } else {
@@ -621,7 +621,7 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService)
+    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService, CsvDTTableService $csvDTTableService)
     {
         //
         try {
@@ -680,6 +680,7 @@ class ReportController extends Controller
             //get the response from openai
             //store it in reports table
             // Get all PDF files for the project
+            // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
             $allFiles = $project->files;
             // $allFiles = $project->files()->where('type', 'application/pdf')->get();
             $result = null;
@@ -716,7 +717,8 @@ class ReportController extends Controller
 
 
                         // return $project->schema_name.$file->csv_data_type_table_name;
-                        $csvDTTableService = new CsvDTTableService();
+                        // $csvDTTableService = new CsvDTTableService();
+                       
                         // return $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlContentArr['project_id'] = $project->id;
                         $pgsqlContentArr['project_data_id'] = $file->id;
@@ -727,9 +729,9 @@ class ReportController extends Controller
                         $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
                         $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
-                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponses($file, $project->schema_name, $file->csv_data_type_table_name);
+                        // $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getRecordsFromOpenEndedColumns($project);
                         $pgsqlFinalArr[] = $pgsqlContentArr;
-                        $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
+                        // $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
                     } else {
                         $csvDataSourceService = new CsvDataSourceService();
                         $csvContentArr[] = $csvDataSourceService->getDataFromCsvforDashboardCreate($file);
@@ -782,10 +784,10 @@ class ReportController extends Controller
                 'website_urls' => $websiteContentArr,
                 'pgsql_tables' => $pgsqlFinalArr,
             ];
-            $qda = [
+            return $qda = [
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
-                'open_ended_responses' => $pgsqlOpenEndedFinalArr,
+                'open_ended_responses' => $csvDTTableService->getRecordsFromOpenEndedColumns($project),
             ];
 
             $jsonQda = json_encode($qda);
@@ -832,8 +834,17 @@ class ReportController extends Controller
                     );
 
                 $qdaInsightsString = (string) $qdaInsights;
+                [$qdaInsightsDecoded, $decodeError] = $this->decodeAiJson($qdaInsightsString);
 
                 $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
+
+                //Csv open ended responses qualitative insights
+                // get all tables related to a project
+                // $projectTables = $csvDTTableService->getAllTablesForProject($project);
+                // get open ended reponses per table and chunk it to avoid token limit
+                // send it to the model and get insights
+                //Merge the insights with the previous qualitative insights
+
                 $data_for_prompt_design = [
                     // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
 
@@ -890,8 +901,9 @@ class ReportController extends Controller
                     );
 
                 $qdaInsightsString = (string) $qdaInsights;
-
-                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
+                [$qdaInsightsDecoded, $decodeError] = $this->decodeAiJson($qdaInsightsString);
+                
+                //$qdaInsightsDecoded = json_decode($qdaInsightsString, true);
                 $data_for_prompt_design = [
                     // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
 
