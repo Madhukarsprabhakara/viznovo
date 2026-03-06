@@ -15,15 +15,17 @@ class QdaOpenResponsesFirstChunk implements ShouldQueue
     protected int $projectId;
     protected int $reportId;
     protected array $chunkData;
+    protected ?string $modelKey;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(Project $project, array $chunkData, Report $report)
+    public function __construct(Project $project, array $chunkData, Report $report, ?string $modelKey = null)
     {
         $this->projectId = (int) $project->id;
         $this->reportId = (int) $report->id;
         $this->chunkData = $chunkData;
+        $this->modelKey = $modelKey;
     }
 
     /**

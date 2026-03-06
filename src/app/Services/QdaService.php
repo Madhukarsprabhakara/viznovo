@@ -9,7 +9,7 @@ use App\Models\Report;
 class QdaService
 {
 
-    public function createJobs(Project $project, array $openEndedResponseChunks, Report $report)
+    public function createJobs(Project $project, array $openEndedResponseChunks, Report $report, ?string $modelKey = null)
     {
         $firstChunkJobs = [];
         $remainingChunkJobs = [];
@@ -39,6 +39,7 @@ class QdaService
                     'table_name' => $tableName,
                     'chunk_index' => 0,
                     'responses' => array_values($firstChunk),
+                    'model_key' => $modelKey,
                 ], $report);
             }
 
@@ -54,6 +55,7 @@ class QdaService
                     'table_name' => $tableName,
                     'chunk_index' => $chunkIndex,
                     'responses' => array_values($chunk),
+                    'model_key' => $modelKey,
                 ], $report);
             }
         }

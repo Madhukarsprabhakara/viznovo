@@ -90,4 +90,8 @@ class ProjectDataMetricsService
             ->where('is_successful', true)
             ->get(['metric_name', 'description', 'result']);
     }
+    public function checkMetricsExistForReport(int $reportId): bool
+    {
+        return ProjectDataMetric::where('report_id', $reportId)->exists(); 
+    }
 }

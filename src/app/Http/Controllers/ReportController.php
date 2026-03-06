@@ -670,6 +670,7 @@ class ReportController extends Controller
                     'result' => null,
                     'is_automatic' => false,
                     'model_key' => $request->model_key,
+                    'start_epoch' => now()->timestamp,
                 ]);
             }
 
@@ -795,13 +796,13 @@ class ReportController extends Controller
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
             ];
-            $qda = [
+            return $qda = [
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
                 'open_ended_responses' => $csvDTTableService->getRecordsFromOpenEndedColumns($project),
             ];
             // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
-            $qdaJobs = $qdaService->createJobs($project, $qda['open_ended_responses'], $report);
+            $qdaJobs = $qdaService->createJobs($project, $qda['open_ended_responses'], $report, $request->model_key);
 
             $jsonQda = json_encode($qda);
             //$jsonData = json_encode($input_data);
@@ -816,12 +817,12 @@ class ReportController extends Controller
                 Bus::chain([
 
                     Bus::batch([
-                        new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project),
-                        new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project)
+                        new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key),
+                        new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key)
                     ]),
                     Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
                     Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
-                    new CreateDashboardJ($prompt, $report, $project, $data_for_prompt_design ?? [])
+                    new CreateDashboardJ($prompt, $report, $project, $data_for_prompt_design ?? [], $request->model_key)
 
                 ])->dispatch();
 
