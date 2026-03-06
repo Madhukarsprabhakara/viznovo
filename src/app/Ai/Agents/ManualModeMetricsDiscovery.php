@@ -43,6 +43,8 @@ class ManualModeMetricsDiscovery implements Agent, Conversational, HasTools
 
         Qualitative data analysis is important but we will focus on that in the next steps. \n\n
 
+        You should look at PDF and Website content only if the user request is specifically asking for metrics related to those sources. \n\n
+
         Make sure to use the right schema name and table name in the SQL query.\n\n
 
         Assume the SQL engine doesn’t allow referencing a SELECT-list alias within another expression in the same query block. \n\n

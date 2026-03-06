@@ -16,6 +16,8 @@ use App\Services\ProjectDataMetricsService;
 use App\Models\AIModel;
 use League\Csv\Reader;
 use League\Csv\Statement;
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
 use App\Ai\Agents\DiscoverFiles;
 use App\Ai\Agents\CreatePrompt5dImpact;
 use App\Ai\Agents\CustomResearch;
@@ -25,6 +27,9 @@ use App\Ai\Agents\ManualModeQualitativeDataInsights;
 use App\Ai\Agents\PromptDesigner;
 use App\Ai\Agents\CreateDashboard;
 use App\Ai\Agents\QualitativeDataInsights;
+use App\Services\QdaService;
+use App\Jobs\ManualModeMetricsDiscoveryJ;
+use App\Jobs\ManualModeQualitativeDataInsightsJ;
 use Spatie\Browsershot\Browsershot;
 
 use Illuminate\Support\Facades\Auth;
@@ -621,7 +626,7 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService, CsvDTTableService $csvDTTableService)
+    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService, CsvDTTableService $csvDTTableService, QdaService $qdaService)
     {
         //
         try {
@@ -718,7 +723,7 @@ class ReportController extends Controller
 
                         // return $project->schema_name.$file->csv_data_type_table_name;
                         // $csvDTTableService = new CsvDTTableService();
-                       
+
                         // return $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlContentArr['project_id'] = $project->id;
                         $pgsqlContentArr['project_data_id'] = $file->id;
@@ -784,14 +789,22 @@ class ReportController extends Controller
                 'website_urls' => $websiteContentArr,
                 'pgsql_tables' => $pgsqlFinalArr,
             ];
-            return $qda = [
+            $input_metric_data = [
+                'pgsql_tables' => $pgsqlFinalArr,
+                'pdf_content' => $pdfContentArr,
+                'website_urls' => $websiteContentArr,
+            ];
+            $qda = [
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
                 'open_ended_responses' => $csvDTTableService->getRecordsFromOpenEndedColumns($project),
             ];
+            // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
+            $qdaJobs = $qdaService->createJobs($project, $qda['open_ended_responses'], $report);
 
             $jsonQda = json_encode($qda);
-            $jsonData = json_encode($input_data);
+            //$jsonData = json_encode($input_data);
+            $jsonMetricData = json_encode($input_metric_data);
 
 
             $prompt = $request->input('prompt');
@@ -799,10 +812,20 @@ class ReportController extends Controller
             if ($request->model_key == 'gpt-5') {
 
 
+                Bus::chain([
+
+                    new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData),
+                    new ManualModeQualitativeDataInsightsJ,
+                    Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
+                    Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
+
+                ])->dispatch();
+
+
                 $tableDataString = json_encode($input_data['pgsql_tables']);
                 $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
                     ->prompt(
-                        'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
+                        'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $jsonMetricData,
                         provider: [
                             'openai' => 'gpt-5.2',
                             'gemini' => 'gemini-3.1-pro-preview',
@@ -871,7 +894,7 @@ class ReportController extends Controller
                         provider: [
                             'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
-                            
+
                         ],
                         timeout: 600,
                     );
@@ -895,14 +918,14 @@ class ReportController extends Controller
                         provider: [
                             'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
-                            
+
                         ],
                         timeout: 600,
                     );
 
                 $qdaInsightsString = (string) $qdaInsights;
                 [$qdaInsightsDecoded, $decodeError] = $this->decodeAiJson($qdaInsightsString);
-                
+
                 //$qdaInsightsDecoded = json_decode($qdaInsightsString, true);
                 $data_for_prompt_design = [
                     // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
@@ -917,7 +940,7 @@ class ReportController extends Controller
                         provider: [
                             'gemini' => 'gemini-3.1-pro-preview',
                             'openai' => 'gpt-5.2',
-                            
+
                         ],
                         timeout: 600,
                     );
