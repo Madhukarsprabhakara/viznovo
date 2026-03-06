@@ -30,6 +30,7 @@ use App\Ai\Agents\QualitativeDataInsights;
 use App\Services\QdaService;
 use App\Jobs\ManualModeMetricsDiscoveryJ;
 use App\Jobs\ManualModeQualitativeDataInsightsJ;
+use App\Jobs\CreateDashboardJ;
 use Spatie\Browsershot\Browsershot;
 
 use Illuminate\Support\Facades\Auth;
@@ -811,17 +812,20 @@ class ReportController extends Controller
             $analysisPlanString = $prompt;
             if ($request->model_key == 'gpt-5') {
 
-
+                $idb = null;
                 Bus::chain([
 
-                    new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData),
-                    new ManualModeQualitativeDataInsightsJ,
+                    Bus::batch([
+                        new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project),
+                        new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project)
+                    ]),
                     Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
                     Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
+                    new CreateDashboardJ($prompt, $report, $project, $data_for_prompt_design ?? [])
 
                 ])->dispatch();
 
-
+                return $idb;
                 $tableDataString = json_encode($input_data['pgsql_tables']);
                 $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
                     ->prompt(
