@@ -10,6 +10,7 @@ use App\Services\JsonDataService;
 use App\Services\ProjectDataMetricsService;
 use App\Ai\Agents\ManualModeMetricsDiscovery;
 
+
 class ManualModeMetricsDiscoveryJ implements ShouldQueue
 {
     use Queueable, Batchable;
@@ -80,9 +81,19 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
         $sqls = $projectDataMetricsService->store($metricSqls, $this->user->id, $this->report->id);
         if ($projectDataMetricsService->checkMetricsExistForReport($this->report->id)) {
             // log the status
-        }
-        else {
+
+            \DB::table('report_logs')
+                ->updateOrInsert(
+                    ['report_id' => $this->report->id, 'agent' => 'ManualModeMetricsDiscovery'],
+                    ['response' => json_encode($metricSqls), 'error' => null, 'created_at' => now(), 'updated_at' => now()]
+                );
             
+        } else {
+            \DB::table('report_logs')
+                ->updateOrInsert(
+                    ['report_id' => $this->report->id, 'agent' => 'ManualModeMetricsDiscovery'],
+                    ['response' => null, 'error' => 'No metrics found for the report.', 'created_at' => now(), 'updated_at' => now()]
+                );
         }
     }
 }

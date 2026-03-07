@@ -111,6 +111,43 @@ class JsonDataService
         json_decode($trimmed, true);
         return [null, $lastError ?: (json_last_error_msg() ?: 'Invalid JSON')];
     }
+    public function extractPromptResponse(mixed $decoded, string $rawText): ?string
+    {
+        if (is_array($decoded)) {
+            if (array_key_exists('prompt_response', $decoded) && is_string($decoded['prompt_response'])) {
+                return $decoded['prompt_response'];
+            }
+
+            if (array_is_list($decoded)) {
+                foreach ($decoded as $item) {
+                    if (is_array($item) && array_key_exists('prompt_response', $item) && is_string($item['prompt_response'])) {
+                        return $item['prompt_response'];
+                    }
+                }
+            }
+        }
+
+        $trimmed = trim($rawText);
+
+        // If the model returned raw HTML (full doc or fragment), accept it.
+        if (stripos($trimmed, '<html') !== false || stripos($trimmed, '<!doctype html') !== false) {
+            return $trimmed;
+        }
+
+        $firstTagPos = strpos($trimmed, '<');
+        $lastTagPos = strrpos($trimmed, '>');
+        if ($firstTagPos !== false && $lastTagPos !== false && $lastTagPos > $firstTagPos) {
+            $possibleHtml = trim(substr($trimmed, $firstTagPos, $lastTagPos - $firstTagPos + 1));
+            if ($possibleHtml !== '' && preg_match('/^\s*</', $possibleHtml) === 1) {
+                // Heuristic: if it ends with a closing tag or contains a div root, it's likely HTML.
+                if (preg_match('/<\/[a-zA-Z][^>]*>\s*$/', $possibleHtml) === 1 || stripos($possibleHtml, '<div') !== false) {
+                    return $possibleHtml;
+                }
+            }
+        }
+
+        return null;
+    }
     
 }
 

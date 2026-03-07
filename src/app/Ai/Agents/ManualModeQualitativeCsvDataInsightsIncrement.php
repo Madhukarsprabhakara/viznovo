@@ -6,11 +6,12 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
+use Laravel\Ai\Concerns\RemembersConversations;
 use Stringable;
 
 class ManualModeQualitativeCsvDataInsightsIncrement implements Agent, Conversational, HasTools
 {
-    use Promptable;
+    use Promptable, RemembersConversations;
 
     /**
      * Get the instructions that the agent should follow.
@@ -53,7 +54,7 @@ class ManualModeQualitativeCsvDataInsightsIncrement implements Agent, Conversati
             
         } \n\n
         
-        If no new insights are generated based on the new data received, then return the same json structure without adding any new insights. \n\n
+        If no new insights are generated based on the new data received, then return the same json structure as is without adding any new insights. \n\n
         
         DO NOT FOCUS on Quantitative data analysis part of the user request, if present. \n\n
 

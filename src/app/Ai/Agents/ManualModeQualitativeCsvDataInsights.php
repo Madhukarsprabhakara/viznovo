@@ -6,11 +6,12 @@ use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\Conversational;
 use Laravel\Ai\Contracts\HasTools;
 use Laravel\Ai\Promptable;
+use Laravel\Ai\Concerns\RemembersConversations;
 use Stringable;
 
 class ManualModeQualitativeCsvDataInsights implements Agent, Conversational, HasTools
 {
-    use Promptable;
+    use Promptable, RemembersConversations;
 
     /**
      * Get the instructions that the agent should follow.
@@ -49,6 +50,8 @@ class ManualModeQualitativeCsvDataInsights implements Agent, Conversational, Has
         } \n\n
         
         DO NOT FOCUS on Quantitative data analysis part of the user request, if present. \n\n
+
+        If responses are unavailable for any question, then provide an empty array for insights for that question in the json structure. \n\n
 
         Quantitative data analysis is important but we will focus on that separately. \n\n
         

@@ -9,7 +9,7 @@ use App\Models\Report;
 class QdaService
 {
 
-    public function createJobs(Project $project, array $openEndedResponseChunks, Report $report, ?string $modelKey = null)
+    public function createJobs(Project $project, array $openEndedResponseChunks, Report $report, ?string $modelKey = null, $user = null)
     {
         $firstChunkJobs = [];
         $remainingChunkJobs = [];
@@ -21,7 +21,7 @@ class QdaService
 
             $tableName = $tableEntry['table_name'] ?? null;
             $chunks = $tableEntry['response_chunks'] ?? null;
-
+            $totalChunkCount = is_array($chunks) ? count($chunks) : null;
             if (!is_string($tableName) || $tableName === '') {
                 continue;
             }
@@ -34,29 +34,41 @@ class QdaService
 
             $firstChunk = $chunks[0] ?? null;
             if (is_array($firstChunk) && $firstChunk !== []) {
-                $firstChunkJobs[] = new QdaOpenResponsesFirstChunk($project, [
-                    'project_id' => $project->id,
-                    'table_name' => $tableName,
-                    'chunk_index' => 0,
-                    'responses' => array_values($firstChunk),
-                    'model_key' => $modelKey,
-                ], $report);
+                $firstChunkJobs[] = new QdaOpenResponsesFirstChunk(
+                    $project, 
+                    $tableName, 
+                    0, 
+                    array_values($firstChunk), 
+                    $report, 
+                    $modelKey, 
+                    $user,
+                    $totalChunkCount,
+               );
             }
 
             $chunkCount = count($chunks);
+            $incrementalChain = [];
             for ($chunkIndex = 1; $chunkIndex < $chunkCount; $chunkIndex++) {
                 $chunk = $chunks[$chunkIndex] ?? null;
                 if (!is_array($chunk) || $chunk === []) {
                     continue;
                 }
 
-                $remainingChunkJobs[] = new QdaOpenResponsesIncremental($project, [
-                    'project_id' => $project->id,
-                    'table_name' => $tableName,
-                    'chunk_index' => $chunkIndex,
-                    'responses' => array_values($chunk),
-                    'model_key' => $modelKey,
-                ], $report);
+                $incrementalChain[] = new QdaOpenResponsesIncremental(
+                    $project,
+                    $tableName,
+                    $chunkIndex,
+                    array_values($chunk),
+                    $report,
+                    $modelKey,
+                    $user,
+                    $totalChunkCount,
+                );
+            }
+
+            if ($incrementalChain !== []) {
+                // Nested arrays create per-table job chains inside a batch.
+                $remainingChunkJobs[] = $incrementalChain;
             }
         }
 

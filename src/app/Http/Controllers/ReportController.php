@@ -796,13 +796,13 @@ class ReportController extends Controller
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
             ];
-            return $qda = [
+            $qda = [
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
-                'open_ended_responses' => $csvDTTableService->getRecordsFromOpenEndedColumns($project),
+                //'open_ended_responses' => $csvDTTableService->getRecordsFromOpenEndedColumns($project),
             ];
             // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
-            $qdaJobs = $qdaService->createJobs($project, $qda['open_ended_responses'], $report, $request->model_key);
+            $qdaJobs = $qdaService->createJobs($project,$csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
 
             $jsonQda = json_encode($qda);
             //$jsonData = json_encode($input_data);
@@ -822,7 +822,7 @@ class ReportController extends Controller
                     ]),
                     Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
                     Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
-                    new CreateDashboardJ($prompt, $report, $project, $data_for_prompt_design ?? [], $request->model_key)
+                    new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key)
 
                 ])->dispatch();
 
