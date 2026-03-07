@@ -14,6 +14,7 @@ use App\Jobs\CreateCsvDataTypeTable;
 use App\Jobs\IdentifyCsvColumnDataTypes;
 use App\Jobs\AddRecordsCsvDataTypeTable;
 use App\Services\CsvFileService;
+
 class ProjectController extends Controller
 {
     /**
@@ -132,25 +133,28 @@ class ProjectController extends Controller
                 $projectData = $projectService->handleFileUpload($project, $file);
 
                 if (strtolower($file->getClientOriginalExtension()) === 'csv') {
+                    
                     $projectData->csv_text_table_name = $csvFileService->getTextTableNameFromCsvName($file, $projectData->id);
                     $projectData->csv_data_type_table_name = $csvFileService->getDataTypeTableNameFromCsvName($file, $projectData->id);
                     $projectData->save();
+                    Bus::batch([
+                        [
+                            new CreateCsvTextTable($projectData),
+                            new AddRecordsCsvTextTable($projectData),
+                            new IdentifyCsvColumnDataTypes($projectData),
+                            new CreateCsvDataTypeTable($projectData),
+                            new AddRecordsCsvDataTypeTable($projectData),
+                        ],
+
+
+                    ])->then(function (Batch $batch) {
+                        // All jobs completed successfully...log the success in a separate table with batch id and project data id
+
+                    })->dispatch();
                 }
+                
                 //dispatch a job to process csv file
-                Bus::batch([
-                    [
-                        new CreateCsvTextTable($projectData),
-                        new AddRecordsCsvTextTable($projectData),
-                        new IdentifyCsvColumnDataTypes($projectData),
-                        new CreateCsvDataTypeTable($projectData),
-                        new AddRecordsCsvDataTypeTable($projectData),
-                    ],
 
-                    
-                ])->then(function (Batch $batch) {
-                    // All jobs completed successfully...log the success in a separate table with batch id and project data id
-
-                })->dispatch();
             }
 
             // $projectService->handleFileUpload($project, $file);

@@ -113,7 +113,9 @@ class CreateDashboard implements Agent, Conversational, HasTools
 
 - Make it visually appealing.
        
-- Use light pastel colors, blocks, spacing, and typography to enhance the design.';
+- DO NOT use DARK colors but you can use different shades of light colors to create contrast and visual interest.
+
+- USE blocks, spacing, and typography to enhance the design.';
     }
 
 

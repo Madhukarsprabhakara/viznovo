@@ -674,20 +674,7 @@ class ReportController extends Controller
                 ]);
             }
 
-            //Save report and get the report id
-            //Pass the report id to project data metrics
-            //store response in reports table
-            // return $request->all();
-            //Save report and get the report id
-            // sleep(10); // Simulate a delay for processing
-            //get all pdf data for the project
-            //extract text from the pdfs
-            //create a json response from extracted text
-            //send the json data along with the prompt to open ai
-            //get the response from openai
-            //store it in reports table
-            // Get all PDF files for the project
-            // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
+
             $allFiles = $project->files;
             // $allFiles = $project->files()->where('type', 'application/pdf')->get();
             $result = null;
@@ -802,7 +789,7 @@ class ReportController extends Controller
                 //'open_ended_responses' => $csvDTTableService->getRecordsFromOpenEndedColumns($project),
             ];
             // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
-            $qdaJobs = $qdaService->createJobs($project,$csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
+            $qdaJobs = $qdaService->createJobs($project, $csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
 
             $jsonQda = json_encode($qda);
             //$jsonData = json_encode($input_data);
@@ -811,173 +798,22 @@ class ReportController extends Controller
 
             $prompt = $request->input('prompt');
             $analysisPlanString = $prompt;
-            if ($request->model_key == 'gpt-5') {
-
-                $idb = null;
-                Bus::chain([
-
-                    Bus::batch([
-                        new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key),
-                        new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key)
-                    ]),
-                    Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
-                    Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
-                    new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key)
-
-                ])->dispatch();
-
-                return $idb;
-                $tableDataString = json_encode($input_data['pgsql_tables']);
-                $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
-                    ->prompt(
-                        'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $jsonMetricData,
-                        provider: [
-                            'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3.1-pro-preview',
-                        ],
-                        timeout: 600,
-                    );
-                $metrics_sql_string = (string) $metrics_sql;
-                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
-                $promptDecoded['project_id'] = $project->id;
-                //$promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
-                $promptDecoded['user_id'] = $userId;
-                $metricSqls[] = $promptDecoded ?? null;
-                // You can further process each table's data here if needed
-                // For example, you might want to summarize the schema or sample records
 
 
-                $sqls = $projectDataMetricsService->store($metricSqls, $userId, $report->id);
+            $idb = null;
+            Bus::chain([
 
-                //Qualitative data analytics
+                Bus::batch([
+                    new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key),
+                    new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key)
+                ]),
+                Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
+                Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
+                new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key)
 
-                $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($request->user())
-                    ->prompt(
-                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
-                        provider: [
-                            'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3.1-pro-preview',
-                        ],
-                        timeout: 600,
-                    );
+            ])->dispatch();
 
-                $qdaInsightsString = (string) $qdaInsights;
-                [$qdaInsightsDecoded, $decodeError] = $this->decodeAiJson($qdaInsightsString);
-
-                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
-
-                //Csv open ended responses qualitative insights
-                // get all tables related to a project
-                // $projectTables = $csvDTTableService->getAllTablesForProject($project);
-                // get open ended reponses per table and chunk it to avoid token limit
-                // send it to the model and get insights
-                //Merge the insights with the previous qualitative insights
-
-                $data_for_prompt_design = [
-                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
-
-                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($report->id),
-                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
-                ];
-
-                $response = (new CreateDashboard)->forUser($request->user())
-                    ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
-                        provider: [
-                            'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3.1-pro-preview',
-                        ],
-                        timeout: 600,
-                    );
-            }
-
-            if ($request->model_key == 'gemini-3-pro') {
-                $tableDataString = json_encode($input_data['pgsql_tables']);
-                $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
-                    ->prompt(
-                        'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
-                        provider: [
-                            'gemini' => 'gemini-3.1-pro-preview',
-                            'openai' => 'gpt-5.2',
-
-                        ],
-                        timeout: 600,
-                    );
-                $metrics_sql_string = (string) $metrics_sql;
-                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
-                $promptDecoded['project_id'] = $project->id;
-                //$promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
-                $promptDecoded['user_id'] = $userId;
-                $metricSqls[] = $promptDecoded ?? null;
-                // You can further process each table's data here if needed
-                // For example, you might want to summarize the schema or sample records
-                sleep(60); // Simulate a delay for processing
-
-                $sqls = $projectDataMetricsService->store($metricSqls, $userId, $report->id);
-
-                //Qualitative data analytics
-
-                $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($request->user())
-                    ->prompt(
-                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
-                        provider: [
-                            'gemini' => 'gemini-3.1-pro-preview',
-                            'openai' => 'gpt-5.2',
-
-                        ],
-                        timeout: 600,
-                    );
-
-                $qdaInsightsString = (string) $qdaInsights;
-                [$qdaInsightsDecoded, $decodeError] = $this->decodeAiJson($qdaInsightsString);
-
-                //$qdaInsightsDecoded = json_decode($qdaInsightsString, true);
-                $data_for_prompt_design = [
-                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
-
-                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($report->id),
-                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
-                ];
-                sleep(60); // Simulate a delay for processing
-                $response = (new CreateDashboard)->forUser($request->user())
-                    ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
-                        provider: [
-                            'gemini' => 'gemini-3.1-pro-preview',
-                            'openai' => 'gpt-5.2',
-
-                        ],
-                        timeout: 600,
-                    );
-            }
-
-            $rawResponseText = (string) $response;
-            [$decoded, $decodeError] = $this->decodeAiJson($rawResponseText);
-            $promptResponse = $this->extractPromptResponse($decoded, $rawResponseText);
-
-            if ($promptResponse === null) {
-                return response()->json([
-                    'message' => 'Response generated but could not be parsed (invalid JSON from model).',
-                    'decode_error' => $decodeError,
-                    'raw_response_preview' => Str::limit((string) $rawResponseText, 4000),
-                ], 422);
-            }
-
-            $report->update([
-                'result' => $promptResponse,
-            ]);
-
-            return [
-                'status' => 'success',
-                'message' => 'Response generated successfully.',
-                'report_id' => $report->id,
-                'report_uuid' => $report->uuid,
-                'data' => $promptResponse,
-            ];
-
-
-            // 
-
+            return $idb;
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()

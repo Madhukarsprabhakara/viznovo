@@ -11,8 +11,6 @@ use App\Services\ProjectDataMetricsService;
 use App\Services\JsonDataService;
 use App\Ai\Agents\CreateDashboard;
 
-use function Pest\Laravel\json;
-
 class CreateDashboardJ implements ShouldQueue
 {
     use Queueable;
@@ -94,10 +92,17 @@ class CreateDashboardJ implements ShouldQueue
         [$decoded, $decodeError] = $jsonDataService->decodeAiJson($rawResponseText);
         $promptResponse = $jsonDataService->extractPromptResponse($decoded, $rawResponseText);
 
-        
+        $endEpoch = now()->timestamp;
+        $startEpoch = $this->report->start_epoch;
+
+        $timeTakenSeconds = is_null($startEpoch)
+            ? null
+            : max(0, $endEpoch - (int) $startEpoch);
 
         $this->report->update([
             'result' => $promptResponse,
+            'end_epoch' => $endEpoch,
+            'time_taken_seconds' => $timeTakenSeconds,
         ]);
     }
 }
