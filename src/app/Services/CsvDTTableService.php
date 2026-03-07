@@ -7,7 +7,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
-
+use App\Models\Project;
 class CsvDTTableService
 {
 
@@ -445,6 +445,153 @@ class CsvDTTableService
                 return $this->normalizeRowForJson((array) $item);
             })
             ->toArray();
+    }
+    public function getOpenEndedResponsesForIncrementalAnalysis(ProjectData $projectData, $schemaName, $tableName): array
+    {
+        $schemaName = strtolower(trim((string) $schemaName));
+        $tableName = strtolower(trim((string) $tableName));
+
+        if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
+            throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
+        }
+
+        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
+            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
+        }
+
+        $qualifiedTable = $schemaName . '.' . $tableName;
+
+        $connection = DB::getDefaultConnection();
+        if (DB::connection($connection)->getDriverName() !== 'pgsql') {
+            throw new InvalidArgumentException('getOpenEndedResponsesForIncrementalAnalysis only supports pgsql; got ' . DB::connection($connection)->getDriverName());
+        }
+
+        if (!Schema::connection($connection)->hasTable($qualifiedTable)) {
+            throw new InvalidArgumentException('Target table does not exist: ' . $qualifiedTable);
+        }
+
+        $openEndedDbColumnToCsvHeader = $projectData->projectDataCsvs()
+            ->whereHas('csvDataType', function ($q) {
+                $q->where('csv_type_key', 'text-open-ended');
+            })
+            ->whereNotNull('db_column')
+            ->get(['db_column', 'csv_header'])
+            ->map(function ($row) {
+                return [
+                    'db_column' => strtolower(trim((string) ($row->db_column ?? ''))),
+                    'csv_header' => trim((string) ($row->csv_header ?? '')),
+                ];
+            })
+            ->filter(function (array $row) {
+                $col = $row['db_column'] ?? '';
+                if (!is_string($col)) {
+                    return false;
+                }
+
+                $col = strtolower(trim($col));
+                if ($col === '' || strlen($col) > 55) {
+                    return false;
+                }
+                if (preg_match('/^[0-9]/', $col) === 1) {
+                    return false;
+                }
+                return preg_match('/[^a-z0-9_]/', $col) !== 1;
+            })
+            ->unique('db_column')
+            ->values()
+            ->mapWithKeys(function (array $row) {
+                $dbColumn = (string) ($row['db_column'] ?? '');
+                $csvHeader = trim((string) ($row['csv_header'] ?? ''));
+
+                return [$dbColumn => $csvHeader !== '' ? $csvHeader : $dbColumn];
+            })
+            ->toArray();
+
+        if (empty($openEndedDbColumnToCsvHeader)) {
+            return [];
+        }
+
+        $existingColumns = DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->whereIn('column_name', array_keys($openEndedDbColumnToCsvHeader))
+            ->pluck('column_name')
+            ->map(function ($col) {
+                return strtolower(trim((string) $col));
+            })
+            ->values()
+            ->toArray();
+
+        if (empty($existingColumns)) {
+            return [];
+        }
+
+        $csvHeaderByDbColumn = [];
+        foreach ($existingColumns as $dbColumn) {
+            $csvHeaderByDbColumn[$dbColumn] = $openEndedDbColumnToCsvHeader[$dbColumn] ?? $dbColumn;
+        }
+
+        return DB::connection($connection)
+            ->table($qualifiedTable)
+            ->select($existingColumns)
+            ->get()
+            ->map(function ($item) use ($csvHeaderByDbColumn) {
+                $row = $this->normalizeRowForJson((array) $item);
+
+                $renamed = [];
+                foreach ($csvHeaderByDbColumn as $dbColumn => $csvHeader) {
+                    $renamed[$csvHeader] = $row[$dbColumn] ?? null;
+                }
+
+                return $renamed;
+            })
+            ->toArray();
+    }
+    public function getRecordsFromOpenEndedColumns(Project $project): array
+    {
+        $openEndedResponsesTable = [];
+        $openEndedResponses = [];
+        $tables=$this->getAllTablesForProject($project);
+        foreach($tables as $table){
+            $openEndedResponsesTable['table_name'] = $table['csv_data_type_table_name'];
+            $openEndedResponsesTable['responses'] = $this->getOpenEndedResponsesForIncrementalAnalysis($table, $project->schema_name, $table['csv_data_type_table_name']);
+            $openEndedResponses[] = $openEndedResponsesTable;
+            // Process the open-ended responses as needed
+        }
+        
+        return $this->chunkOpenEndedResponses($openEndedResponses);
+    }
+    public function chunkOpenEndedResponses(array $openEndedResponses, int $chunkSize = 20): array
+    {
+        $chunkSize = max(1, (int) $chunkSize);
+
+        $result = [];
+        foreach ($openEndedResponses as $tableEntry) {
+            if (!is_array($tableEntry)) {
+                continue;
+            }
+
+            $tableName = (string) ($tableEntry['table_name'] ?? '');
+            $responses = $tableEntry['responses'] ?? [];
+            // return $array_chunked = collect($responses)->chunk($chunkSize)->toArray();
+            if (!is_array($responses)) {
+                $responses = [];
+            }
+
+            $result[] = [
+                'table_name' => $tableName,
+                'response_chunks' => array_values(array_map(function (array $chunk) {
+                    return array_values($chunk);
+                }, array_chunk(array_values($responses), $chunkSize))),
+            ];
+        }
+
+        return $result;
+    }
+    public function getAllTablesForProject(Project $project)
+    {
+        return $project->tables;
     }
     
 }

@@ -84,9 +84,9 @@ class CreateDashboard implements Agent, Conversational, HasTools
 
 - Just the HTML code should be returned that can be rendered directly on browser.
 
- - USE ONLY tailwindcss. 
+- USE ONLY tailwindcss. 
 
- - Do NOT show raw JSON records.
+- Do NOT show raw JSON records or results.
  
 - Each section, card, and stats block should be modular and copyable as its own block.
 
@@ -113,7 +113,9 @@ class CreateDashboard implements Agent, Conversational, HasTools
 
 - Make it visually appealing.
        
-- Use light pastel colors, blocks, spacing, and typography to enhance the design.';
+- DO NOT use DARK colors but you can use different shades of light colors to create contrast and visual interest.
+
+- USE blocks, spacing, and typography to enhance the design.';
     }
 
 

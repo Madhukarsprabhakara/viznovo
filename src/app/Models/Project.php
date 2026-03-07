@@ -66,6 +66,10 @@ class Project extends Model
     {
         return $this->hasMany(ProjectData::class);
     }
+    public function tables()
+    {
+        return $this->hasMany(ProjectData::class)->where('type', 'text/csv')->whereNotNull('csv_data_type_table_name');
+    }
     public function reports()
     {
         return $this->hasMany(Report::class);

@@ -16,6 +16,8 @@ use App\Services\ProjectDataMetricsService;
 use App\Models\AIModel;
 use League\Csv\Reader;
 use League\Csv\Statement;
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
 use App\Ai\Agents\DiscoverFiles;
 use App\Ai\Agents\CreatePrompt5dImpact;
 use App\Ai\Agents\CustomResearch;
@@ -25,6 +27,10 @@ use App\Ai\Agents\ManualModeQualitativeDataInsights;
 use App\Ai\Agents\PromptDesigner;
 use App\Ai\Agents\CreateDashboard;
 use App\Ai\Agents\QualitativeDataInsights;
+use App\Services\QdaService;
+use App\Jobs\ManualModeMetricsDiscoveryJ;
+use App\Jobs\ManualModeQualitativeDataInsightsJ;
+use App\Jobs\CreateDashboardJ;
 use Spatie\Browsershot\Browsershot;
 
 use Illuminate\Support\Facades\Auth;
@@ -263,6 +269,47 @@ class ReportController extends Controller
     {
         //
         try {
+            $request->validate([
+                'model_key' => 'required|string',
+                'title' => 'nullable|string|max:255',
+                'report_id' => 'nullable|integer|exists:reports,id',
+            ]);
+
+            $userId = Auth::id();
+
+            $report = null;
+            if ($request->filled('report_id')) {
+                $report = Report::where('id', $request->integer('report_id'))
+                    ->where('user_id', $userId)
+                    ->where('project_id', $project->id)
+                    ->first();
+
+                if (!$report) {
+                    return response()->json(['message' => 'Invalid report_id.'], 403);
+                }
+
+                $report->update([
+                    'model_key' => $request->model_key,
+                    'is_automatic' => true,
+                ]);
+            }
+
+            if (!$report) {
+                $fallbackTitle = trim((string) ($request->input('title') ?: 'Auto dashboard'));
+                $fallbackPrompt = (string) ($request->input('prompt') ?: ($request->input('template_id') ?: ''));
+
+                $report = Report::create([
+                    'user_id' => $userId,
+                    'uuid' => (string) Str::uuid(),
+                    'title' => $fallbackTitle !== '' ? $fallbackTitle : 'Auto dashboard',
+                    'project_id' => $project->id,
+                    'prompt' => $fallbackPrompt,
+                    'result' => null,
+                    'is_automatic' => true,
+                    'model_key' => $request->model_key,
+                ]);
+            }
+
             // return $request->all();
             // sleep(10); // Simulate a delay for processing
             //get all pdf data for the project
@@ -317,7 +364,7 @@ class ReportController extends Controller
                         $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
                         $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
-                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponses($file, $project->schema_name, $file->csv_data_type_table_name);
+                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponsesForIncrementalAnalysis($file, $project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlFinalArr[] = $pgsqlContentArr;
                         $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
                     } else {
@@ -432,7 +479,7 @@ class ReportController extends Controller
                     $project_data_ids[] = $tableData['project_data_id'] ?? null;
                 }
 
-                $sqls = $projectDataMetricsService->store($metricSqls, $tableData['user_id']);
+                $sqls = $projectDataMetricsService->store($metricSqls, $userId, $report->id);
 
                 //Qualitative data analytics
 
@@ -458,7 +505,7 @@ class ReportController extends Controller
                 $data_for_prompt_design = [
                     // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
                     'datasource_summary' => $discovery_array['summary_insights'] ?? null,
-                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
+                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($report->id),
                     'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
                 ];
                 //loop through the pgsql tables and for each table ask the model to generate metrics and sql query
@@ -560,7 +607,17 @@ class ReportController extends Controller
                 ], 422);
             }
 
+            $report->update([
+                'title' => (string) ($request->input('title') ?: $report->title),
+                'prompt' => (string) ($nextAgentPrompt ?: $report->prompt),
+                'result' => $result,
+                'is_automatic' => true,
+                'model_key' => $request->model_key,
+            ]);
+
             return response()->json([
+                'report_id' => $report->id,
+                'report_uuid' => $report->uuid,
                 'next_agent_prompt' => $nextAgentPrompt,
                 'result' => $result,
             ]);
@@ -570,19 +627,54 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService)
+    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService, CsvDTTableService $csvDTTableService, QdaService $qdaService)
     {
         //
         try {
-            // return $request->all();
-            // sleep(10); // Simulate a delay for processing
-            //get all pdf data for the project
-            //extract text from the pdfs
-            //create a json response from extracted text
-            //send the json data along with the prompt to open ai
-            //get the response from openai
-            //store it in reports table
-            // Get all PDF files for the project
+
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'prompt' => 'required|string',
+                'model_key' => 'required|string',
+                'report_id' => 'nullable|integer|exists:reports,id',
+            ]);
+
+            $userId = Auth::id();
+
+            $report = null;
+            if ($request->filled('report_id')) {
+                $report = Report::where('id', $request->integer('report_id'))
+                    ->where('user_id', $userId)
+                    ->where('project_id', $project->id)
+                    ->first();
+
+                if (!$report) {
+                    return response()->json(['message' => 'Invalid report_id.'], 403);
+                }
+
+                $report->update([
+                    'title' => $request->title,
+                    'prompt' => $request->prompt,
+                    'model_key' => $request->model_key,
+                    'is_automatic' => false,
+                ]);
+            }
+
+            if (!$report) {
+                $report = Report::create([
+                    'user_id' => $userId,
+                    'uuid' => (string) Str::uuid(),
+                    'title' => $request->title,
+                    'project_id' => $project->id,
+                    'prompt' => $request->prompt,
+                    'result' => null,
+                    'is_automatic' => false,
+                    'model_key' => $request->model_key,
+                    'start_epoch' => now()->timestamp,
+                ]);
+            }
+
+
             $allFiles = $project->files;
             // $allFiles = $project->files()->where('type', 'application/pdf')->get();
             $result = null;
@@ -616,10 +708,11 @@ class ReportController extends Controller
                 }
                 if ($file->type === 'text/csv') {
                     if ($file->is_csv_data_type_table_populated) {
-                        
-                        
+
+
                         // return $project->schema_name.$file->csv_data_type_table_name;
-                        $csvDTTableService = new CsvDTTableService();
+                        // $csvDTTableService = new CsvDTTableService();
+
                         // return $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlContentArr['project_id'] = $project->id;
                         $pgsqlContentArr['project_data_id'] = $file->id;
@@ -630,9 +723,9 @@ class ReportController extends Controller
                         $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
                         $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
-                        $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getOpenEndedResponses($file, $project->schema_name, $file->csv_data_type_table_name);
+                        // $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getRecordsFromOpenEndedColumns($project);
                         $pgsqlFinalArr[] = $pgsqlContentArr;
-                        $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
+                        // $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
                     } else {
                         $csvDataSourceService = new CsvDataSourceService();
                         $csvContentArr[] = $csvDataSourceService->getDataFromCsvforDashboardCreate($file);
@@ -685,160 +778,42 @@ class ReportController extends Controller
                 'website_urls' => $websiteContentArr,
                 'pgsql_tables' => $pgsqlFinalArr,
             ];
+            $input_metric_data = [
+                'pgsql_tables' => $pgsqlFinalArr,
+                'pdf_content' => $pdfContentArr,
+                'website_urls' => $websiteContentArr,
+            ];
             $qda = [
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
-                'open_ended_responses' => $pgsqlOpenEndedFinalArr,
+                //'open_ended_responses' => $csvDTTableService->getRecordsFromOpenEndedColumns($project),
             ];
+            // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
+            $qdaJobs = $qdaService->createJobs($project, $csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
 
             $jsonQda = json_encode($qda);
-            $jsonData = json_encode($input_data);
+            //$jsonData = json_encode($input_data);
+            $jsonMetricData = json_encode($input_metric_data);
 
 
             $prompt = $request->input('prompt');
             $analysisPlanString = $prompt;
-            if ($request->model_key == 'gpt-5') {
-
-                foreach ($input_data['pgsql_tables'] as $tableData) {
-                    $tableDataString = json_encode($tableData);
-                    $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
-                        ->prompt(
-                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' . $tableDataString,
-                            provider: [
-                                'openai' => 'gpt-5.2',
-                                'gemini' => 'gemini-3.1-pro-preview',
-                            ],
-                            timeout: 600,
-                        );
-                    $metrics_sql_string = (string) $metrics_sql;
-                    [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
-                    $promptDecoded['project_id'] = $project->id;
-                    $promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
-                    $promptDecoded['user_id'] = $tableData['user_id'] ?? null;
-                    $metricSqls[] = $promptDecoded ?? null;
-                    // You can further process each table's data here if needed
-                    // For example, you might want to summarize the schema or sample records
-                    $project_data_ids[] = $tableData['project_data_id'] ?? null;
-                }
-
-                $sqls = $projectDataMetricsService->store($metricSqls, $tableData['user_id']);
-
-                //Qualitative data analytics
-
-                $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($request->user())
-                    ->prompt(
-                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
-                        provider: [
-                            'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3.1-pro-preview',
-                        ],
-                        timeout: 600,
-                    );
-
-                $qdaInsightsString = (string) $qdaInsights;
-
-                $qdaInsightsDecoded = json_decode($qdaInsightsString, true);
-                $data_for_prompt_design = [
-                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
-
-                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
-                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
-                ];
-
-                $response = (new CreateDashboard)->forUser($request->user())
-                    ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
-                        provider: [
-                            'openai' => 'gpt-5.2',
-                            'gemini' => 'gemini-3.1-pro-preview',
-                        ],
-                        timeout: 600,
-                    );
-            }
-            
-            if ($request->model_key == 'gemini-3-pro') {
-                foreach ($input_data['pgsql_tables'] as $tableData) {
-                    $tableDataString = json_encode($tableData);
-                    $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($request->user())
-                        ->prompt(
-                            'Here is the data analysis plan...\n\n' . $analysisPlanString . '\n\n Here is the sample data along with the schema name and table name and the postgres table schema from the sources...' . $tableDataString,
-                            provider: [
-                                'gemini' => 'gemini-3.1-pro-preview',
-                                'openai' => 'gpt-5.2',
-
-                            ],
-                            timeout: 600,
-                        );
-                        sleep(60);
-                    $metrics_sql_string = (string) $metrics_sql;
-                    [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($metrics_sql_string);
-                    $promptDecoded['project_id'] = $project->id;
-                    $promptDecoded['project_data_id'] = $tableData['project_data_id'] ?? null;
-                    $promptDecoded['user_id'] = $tableData['user_id'] ?? null;
-                    $metricSqls[] = $promptDecoded ?? null;
-                    // You can further process each table's data here if needed
-                    // For example, you might want to summarize the schema or sample records
-                    $project_data_ids[] = $tableData['project_data_id'] ?? null;
-                }
-
-                $sqls = $projectDataMetricsService->store($metricSqls, $tableData['user_id']);
-
-                //Qualitative data analytics
-
-                $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($request->user())
-                    ->prompt(
-                        'Here is all of the qualitative data gathered so far...\n\n' .  $jsonQda,
-                        provider: [
-                            'gemini' => 'gemini-3.1-pro-preview',
-                            'openai' => 'gpt-5.2',
-
-                        ],
-                        timeout: 600,
-                    );
-                sleep(60); // Simulate a delay for processing
-                $qdaInsightsString = (string) $qdaInsights;
-                [$promptDecoded, $promptDecodeError] = $this->decodeAiJson($qdaInsightsString);
-                $qdaInsightsDecoded = $promptDecoded ?? [];
-                $data_for_prompt_design = [
-                    // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
-
-                    'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($project_data_ids ?? null),
-                    'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
-                ];
-
-                $response = (new CreateDashboard)->forUser($request->user())
-                    ->prompt(
-                        'Here are the instructions...\n\n' . $prompt . ' and the insights:' . json_encode($data_for_prompt_design),
-                        provider: [
-                            'gemini' => 'gemini-3.1-pro-preview',
-                            'openai' => 'gpt-5.2',
-
-                        ],
-                        timeout: 600,
-                    );
-            }
-
-            $rawResponseText = (string) $response;
-            [$decoded, $decodeError] = $this->decodeAiJson($rawResponseText);
-            $promptResponse = $this->extractPromptResponse($decoded, $rawResponseText);
-
-            if ($promptResponse === null) {
-                return response()->json([
-                    'message' => 'Response generated but could not be parsed (invalid JSON from model).',
-                    'decode_error' => $decodeError,
-                    'raw_response_preview' => Str::limit((string) $rawResponseText, 4000),
-                ], 422);
-            }
-
-            return [
-                'status' => 'success',
-                'message' => 'Response generated successfully.',
-                'data' => $promptResponse,
-            ];
 
 
-            // 
+            $idb = null;
+            Bus::chain([
 
+                Bus::batch([
+                    new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key),
+                    new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key)
+                ]),
+                Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
+                Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
+                new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key)
+
+            ])->dispatch();
+
+            return $idb;
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
@@ -853,6 +828,7 @@ class ReportController extends Controller
     {
         //
         $request->validate([
+            'report_id' => 'nullable|integer|exists:reports,id',
             'project_id' => 'required|exists:projects,id',
             'is_automatic' => 'required|boolean',
             'prompt' => 'required|string',
@@ -860,17 +836,39 @@ class ReportController extends Controller
             'title' => 'required|string|max:255',
             'model_key' => 'required|string',
         ]);
-        Report::create([
-            'user_id' => Auth::id(),
-            'uuid' => Str::uuid(),
-            'title' => $request->title,
-            'project_id' => $request->project_id,
-            'prompt' => $request->prompt,
-            'result' => $request->result,
-            'is_automatic' => $request->boolean('is_automatic'),
-            'model_key' => $request->model_key,
 
-        ]);
+        $userId = Auth::id();
+        $isAutomatic = $request->boolean('is_automatic');
+
+        if ($request->filled('report_id')) {
+            $report = Report::where('id', $request->integer('report_id'))
+                ->where('user_id', $userId)
+                ->where('project_id', $request->project_id)
+                ->first();
+
+            if (!$report) {
+                return response()->json(['message' => 'Invalid report_id.'], 403);
+            }
+
+            $report->update([
+                'title' => $request->title,
+                'prompt' => $request->prompt,
+                'result' => $request->result,
+                'is_automatic' => $isAutomatic,
+                'model_key' => $request->model_key,
+            ]);
+        } else {
+            Report::create([
+                'user_id' => $userId,
+                'uuid' => (string) Str::uuid(),
+                'title' => $request->title,
+                'project_id' => $request->project_id,
+                'prompt' => $request->prompt,
+                'result' => $request->result,
+                'is_automatic' => $isAutomatic,
+                'model_key' => $request->model_key,
+            ]);
+        }
         return to_route('projects.reports.index', $request->project_id);
     }
 
@@ -878,6 +876,7 @@ class ReportController extends Controller
     {
         //
         $request->validate([
+            'report_id' => 'nullable|integer|exists:reports,id',
             'project_id' => 'required|exists:projects,id',
             'is_automatic' => 'required|boolean',
             'prompt' => 'required|string',
@@ -885,17 +884,39 @@ class ReportController extends Controller
             'title' => 'required|string|max:255',
             'model_key' => 'required|string',
         ]);
-        Report::create([
-            'user_id' => Auth::id(),
-            'uuid' => Str::uuid(),
-            'title' => $request->title,
-            'project_id' => $request->project_id,
-            'prompt' => $request->prompt,
-            'result' => $request->result,
-            'is_automatic' => $request->boolean('is_automatic'),
-            'model_key' => $request->model_key,
 
-        ]);
+        $userId = Auth::id();
+        $isAutomatic = $request->boolean('is_automatic');
+
+        if ($request->filled('report_id')) {
+            $report = Report::where('id', $request->integer('report_id'))
+                ->where('user_id', $userId)
+                ->where('project_id', $request->project_id)
+                ->first();
+
+            if (!$report) {
+                return response()->json(['message' => 'Invalid report_id.'], 403);
+            }
+
+            $report->update([
+                'title' => $request->title,
+                'prompt' => $request->prompt,
+                'result' => $request->result,
+                'is_automatic' => $isAutomatic,
+                'model_key' => $request->model_key,
+            ]);
+        } else {
+            Report::create([
+                'user_id' => $userId,
+                'uuid' => (string) Str::uuid(),
+                'title' => $request->title,
+                'project_id' => $request->project_id,
+                'prompt' => $request->prompt,
+                'result' => $request->result,
+                'is_automatic' => $isAutomatic,
+                'model_key' => $request->model_key,
+            ]);
+        }
         return to_route('projects.reports.index', $request->project_id);
     }
     /**
@@ -938,12 +959,14 @@ class ReportController extends Controller
         //
         try {
             $request->validate([
+                'title' => 'required|string|max:255',
                 'prompt' => 'required|string',
                 'result' => 'required|string',
                 'model_key' => 'required|string',
             ]);
 
             $report->update([
+                'title' => $request->title,
                 'prompt' => $request->prompt,
                 'result' => $request->result,
                 'model_key' => $request->model_key,

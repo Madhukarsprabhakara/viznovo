@@ -9,6 +9,26 @@ class Report extends Model
     //
     protected $guarded = [];
 
+    protected $appends = ['time_taken_minutes'];
+
+    public function getTimeTakenMinutesAttribute(): ?float
+    {
+        $startEpoch = $this->start_epoch;
+        $endEpoch = $this->end_epoch;
+
+        if (! is_null($startEpoch) && ! is_null($endEpoch)) {
+            $seconds = max(0, (int) $endEpoch - (int) $startEpoch);
+
+            return round($seconds / 60, 2);
+        }
+
+        if (is_null($this->time_taken_seconds)) {
+            return null;
+        }
+
+        return round(((float) $this->time_taken_seconds) / 60, 2);
+    }
+
     public function project()
     {
         return $this->belongsTo(Project::class);

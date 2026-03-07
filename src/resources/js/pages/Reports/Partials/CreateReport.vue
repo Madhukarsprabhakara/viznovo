@@ -4,14 +4,14 @@
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
         <label for="prompt" class="mb-2 font-semibold text-gray-700">
-          Enter prompt to analyze data and generate a dashboard
+          Enter instructions for the agent to analyze and generate a report.
         </label>
 
         <textarea
           id="prompt"
           v-model="prompt"
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
-          placeholder="Type your prompt here..."
+          placeholder="Type your instructions here. Use markdown for formatting."
           @input="savePrompt"
         />
       </div>
@@ -56,10 +56,10 @@
       </div>
 
       <div class="w-full bg-white p-4 border-t flex gap-2 z-10 mt-4">
-        <button
+        <!-- <button
           class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
           @click="testRun"
-          :disabled="loading"
+          :disabled="loading || !canTestRun"
         >
           <svg
             v-if="loading"
@@ -74,15 +74,18 @@
 
           <span v-if="loading">Processing...</span>
           <span v-else>Test Run</span>
-        </button>
-
+         
+        </button> -->
+        
         <button
           class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
           @click="clearPrompt"
         >
-          Clear
+          Clear Instructions
         </button>
+        
       </div>
+       <p class="text-xs text-gray-500 ml-1"></p>
     </div>
 
     <!-- Report Preview Column -->
@@ -100,14 +103,35 @@
           class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
         />
 
-        <button
+         <button
+          class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          @click="testRun"
+          :disabled="loading || !canTestRun"
+        >
+          <svg
+            v-if="loading"
+            class="animate-spin h-5 w-5 mr-2 text-white"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+
+          <span v-if="loading">Processing...</span>
+          <span v-else>Perform Full Analysis</span>
+        </button>
+
+        <!-- <button
           class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
           :disabled="!reportHtml || !reportName"
           @click="saveReport"
         >
-          Save Dashboard
-        </button>
+          Start Analysis
+        </button> -->
       </div>
+      <p class="text-xs text-gray-500 ml-1">Runs in the background on entire dataset.</p>
     </div>
   </div>
 </template>
@@ -140,8 +164,13 @@ const LOCAL_PROMPT_KEY = (id) => `reportPrompt_${id}`
 const prompt = ref('')
 const reportHtml = ref('')
 const reportName = ref('')
+const reportId = ref(null)
 const loading = ref(false)
 const errorMessage = ref('')
+
+const canTestRun = computed(() => {
+  return Boolean(String(prompt.value ?? '').trim()) && Boolean(String(reportName.value ?? '').trim())
+})
 
 function maybeAddContextWindowTip(message) {
   if (!message || typeof message !== 'string') return message
@@ -179,14 +208,21 @@ function clearPrompt() {
 }
 
 async function testRun() {
+  if (loading.value || !canTestRun.value) return
+
   loading.value = true
   errorMessage.value = ''
   try {
     const response = await axios.post(`/projects/${projectId}/greports`, {
       prompt: prompt.value,
+      title: reportName.value,
       model_key: selectedModelKey.value, // <-- sends selected model key to server
+      report_id: reportId.value,
       // If your backend expects `key` instead, rename to: key: selectedModelKey.value
     })
+    if (response?.data?.report_id) {
+      reportId.value = response.data.report_id
+    }
     reportHtml.value = response.data.data
   } catch (error) {
     const responseData = error?.response?.data
