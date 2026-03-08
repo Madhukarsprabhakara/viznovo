@@ -806,9 +806,9 @@ class ReportController extends Controller
                 Bus::batch([
                     new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key),
                     new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key)
-                ]),
-                Bus::batch($qdaJobs['first_chunk_jobs'] ?? []),
-                Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? []),
+                ])->allowFailures(),
+                Bus::batch($qdaJobs['first_chunk_jobs'] ?? [])->allowFailures(),
+                Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures(),
                 new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key)
 
             ])->dispatch();
