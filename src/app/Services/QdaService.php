@@ -66,15 +66,15 @@ class QdaService
                 );
             }
 
-            if ($incrementalChain !== []) {
-                // Nested arrays create per-table job chains inside a batch.
-                $remainingChunkJobs[] = $incrementalChain;
-            }
+            // if ($incrementalChain !== []) {
+            //     // Nested arrays create per-table job chains inside a batch.
+            //     $remainingChunkJobs[] = $incrementalChain;
+            // }
         }
 
         return [
             'first_chunk_jobs' => $firstChunkJobs,
-            'remaining_chunk_jobs' => $remainingChunkJobs,
+            'remaining_chunk_jobs' => $incrementalChain,
         ];
     }
     
