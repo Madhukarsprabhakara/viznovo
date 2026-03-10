@@ -1,7 +1,8 @@
 <template>
   <div class="mt-1">
     <h2 class="text-lg font-semibold mb-2">Sources</h2>
-    <ul v-if="files && files.length" class="space-y-2">
+      <FileListTable v-if="files && files.length" :files="files"/>
+    <!-- <ul v-if="files && files.length" class="space-y-2">
       <li v-for="file in files" :key="file.id" class="flex items-center space-x-2">
         
           {{ file.name }}
@@ -15,13 +16,14 @@
           &times;
         </button>
       </li>
-    </ul>
-    <div v-else class="text-gray-400 text-sm">No files uploaded yet.</div>
+    </ul> -->
+    <!-- <div v-else class="text-gray-400 text-sm">No files uploaded yet.</div> -->
   </div>
 </template>
 
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
+import FileListTable from './FileListTable.vue';
 const props = defineProps<{
   files: Array<{
     id: number|string,
