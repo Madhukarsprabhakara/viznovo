@@ -80,6 +80,7 @@ services:
     entrypoint: ["npm"]
     networks:
       - irep
+  
 
   irep_supervisord:
     build:
@@ -91,6 +92,7 @@ services:
     working_dir: /var/www/html
     depends_on:
       - irep_db
+      - irep_reverb
     networks:
       - irep
     restart: unless-stopped
@@ -99,3 +101,16 @@ services:
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
+
+  irep_reverb:
+    build:
+      context: .
+      dockerfile: php-prod-us.dockerfile
+    container_name: irep_reverb
+    working_dir: /var/www/html
+    ports:
+      - 8080:8080
+    entrypoint: ["php", "artisan", "reverb:start", "--host","0.0.0.0", "--port","8080", "--hostname", "irep_php"]
+    networks:
+        - irep
+    restart: unless-stopped
