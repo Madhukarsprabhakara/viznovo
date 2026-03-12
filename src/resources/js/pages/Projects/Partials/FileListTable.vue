@@ -26,8 +26,15 @@
             <td :class="[fileIdx === 0 ? '' : 'border-t border-transparent', 'relative py-4 pl-4 pr-3 text-sm sm:pl-6']">
               <div class="font-medium text-gray-900">
                 {{ file.name }}
-                <!-- <span v-if="file.isCurrent" class="ml-1 text-indigo-600">(Current File)</span> -->
+                
               </div>
+              
+              <div v-if="file.project_data_logs.length > 0">
+                <span v-if="file.type==='text/csv'" class=" text-green-600">
+                  Status: {{file.project_data_logs[file.project_data_logs.length - 1].status_message}}
+                </span>
+              </div>
+              
               <div class="mt-1 flex flex-col text-gray-500 sm:block lg:hidden">
                 <span>{{ file.type }}</span>
               </div>

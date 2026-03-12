@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class ProjectData extends Model
 {
+    protected $guarded = [];
+    protected $hidden = ['json_from_ai','json_from_ai_string'];
     protected static function booted(): void
     {
         static::deleting(function (ProjectData $projectData) {
@@ -71,5 +73,9 @@ class ProjectData extends Model
         return  $this->hasMany(ProjectDataCsv::class)
         ->select(['csv_header','db_column','csv_data_type_id'])
         ->with(['csvDataType:id,csv_type_key'])->where('table_type', 'dt_table'); // pick columns from csv_data_types
+    }
+    public function projectDataLogs()
+    {
+        return  $this->hasMany(ProjectDataLog::class);
     }
 }

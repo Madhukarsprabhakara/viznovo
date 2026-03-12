@@ -24,12 +24,15 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import FileListTable from './FileListTable.vue';
+import { computed, ref, watch } from 'vue';
+import { useEcho, useEchoPublic } from '@laravel/echo-vue';
 const props = defineProps<{
   files: Array<{
     id: number|string,
     name: string,
     url: string,
-    type?: string
+    type?: string | null,
+    status?: string | null
   }>
 }>();
 const form = useForm({});

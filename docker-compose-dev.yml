@@ -86,6 +86,7 @@ services:
     depends_on:
       - irep_nginx
       - irep_php
+      - irep_reverb
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html

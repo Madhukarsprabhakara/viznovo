@@ -14,6 +14,8 @@ use App\Jobs\CreateCsvDataTypeTable;
 use App\Jobs\IdentifyCsvColumnDataTypes;
 use App\Jobs\AddRecordsCsvDataTypeTable;
 use App\Services\CsvFileService;
+use App\Events\CsvStatusUpdate;
+use App\Services\ProjectDataLogService;
 
 class ProjectController extends Controller
 {
@@ -62,6 +64,7 @@ class ProjectController extends Controller
     {
         //
         try {
+
             return Inertia::render('Projects/Show', [
                 'project' => $project,
                 'files' => $project->files, // assuming $project->files returns the list
@@ -127,16 +130,34 @@ class ProjectController extends Controller
                 'files' => 'required|array',
                 'files.*' => 'file|mimes:csv,pdf,txt|max:204800', // max 200MB per file
             ]);
-
+            $user_id = $request->user()->id;
             $files = $request->file('files');
             foreach ($files as $file) {
                 $projectData = $projectService->handleFileUpload($project, $file);
 
                 if (strtolower($file->getClientOriginalExtension()) === 'csv') {
-                    
+
                     $projectData->csv_text_table_name = $csvFileService->getTextTableNameFromCsvName($file, $projectData->id);
                     $projectData->csv_data_type_table_name = $csvFileService->getDataTypeTableNameFromCsvName($file, $projectData->id);
+
                     $projectData->save();
+                    // return $projectData;
+                    // return $projectData->with(['projectDataLogs']);
+                    //log the creation of csv data type table
+                    $projectDataLogService = new ProjectDataLogService();
+
+                    $projectDataLog = [
+                        'project_data_id' => $projectData->id,
+                        'status_message' => 'Starting import',
+                        'job' => 'AddRecordsCsvDataTypeTable',
+                    ];
+                    $projectDataLogService->log($projectDataLog);
+                    
+                    event(new CsvStatusUpdate([
+                        'project' => $project,
+                        'files' => $project->files, // assuming $project->files returns the list
+                    ], project_data_id: $projectData->id, user_id: $user_id));
+
                     Bus::batch([
                         [
                             new CreateCsvTextTable($projectData),
@@ -147,12 +168,17 @@ class ProjectController extends Controller
                         ],
 
 
-                    ])->then(function (Batch $batch) {
+                    ])->then(function (Batch $batch) use ($project, $projectData, $user_id) {
                         // All jobs completed successfully...log the success in a separate table with batch id and project data id
-
+                        $projectData->status = 'Imported';
+                        $projectData->save();
+                        event(new CsvStatusUpdate([
+                            'project' => $project,
+                            'files' => $project->files, // assuming $project->files returns the list
+                        ], project_data_id: $projectData->id, user_id: $user_id));
                     })->dispatch();
                 }
-                
+
                 //dispatch a job to process csv file
 
             }

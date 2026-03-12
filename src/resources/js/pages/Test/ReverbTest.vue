@@ -10,6 +10,16 @@
                         <div class="text-sm font-medium">Last TrackerCreated received at</div>
                         <div>{{ lastReceivedAt ?? 'Waiting for events…' }}</div>
                     </div>
+
+                    <div>
+                        <div class="text-sm font-medium">Last CsvStatusUpdate received at</div>
+                        <div>{{ lastCsvStatusReceivedAt ?? 'Waiting for events…' }}</div>
+                    </div>
+
+                    <div>
+                        <div class="text-sm font-medium">CSV Status</div>
+                        <div>{{ csvStatusMessage ?? 'Waiting for status…' }}</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -20,7 +30,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { useEchoPublic } from '@laravel/echo-vue';
+import { useEcho, useEchoPublic } from '@laravel/echo-vue';
 
 // ...existing code...
 const breadcrumbs = computed<BreadcrumbItem[]>(() => [
@@ -29,9 +39,18 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => [
 ])
 
 const lastReceivedAt = ref<string | null>(null);
+const csvStatusMessage = ref<string | null>(null);
+const lastCsvStatusReceivedAt = ref<string | null>(null);
 
-useEchoPublic('tracker-created', 'TrackerCreated', () => {
-    lastReceivedAt.value = new Date().toISOString();
+useEcho<{ status_message?: string }>('csv.status.update.394', 'CsvStatusUpdate', (e) => {
+    csvStatusMessage.value = 'test_'+new Date().toISOString() ;
+    lastCsvStatusReceivedAt.value = new Date().toISOString();
 });
+
+// useEchoPublic('tracker-created', 'TrackerCreated', () => {
+//     lastReceivedAt.value = new Date().toISOString();
+// });
+
+
 // ...existing code...
 </script>

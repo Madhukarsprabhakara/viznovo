@@ -8,6 +8,8 @@ use Illuminate\Bus\Batchable;
 use App\Services\CsvTextTableService;
 use App\Services\ProjectService;
 use App\Models\Project;
+use App\Events\CsvStatusUpdate;
+use App\Services\ProjectDataLogService;
 class AddRecordsCsvTextTable implements ShouldQueue
 {
     use Batchable, Queueable;
@@ -42,5 +44,17 @@ class AddRecordsCsvTextTable implements ShouldQueue
         $csvTextTableService->addRecordsToCsvTextTable($schemaName, $tableName, $records);
         $this->projectData->is_csv_text_table_populated = true;
         $this->projectData->save();
+
+        //log the creation of csv text table
+        $projectDataLogService = new ProjectDataLogService();
+
+        $projectDataLog= [
+            'project_data_id' => $this->projectData->id,
+            'status_message' => 'CSV Text Table Populated',
+            'job' => 'AddRecordsCsvTextTable',
+        ];
+        $projectDataLogService->log($projectDataLog);
+        $this->projectData->projectDataLogs;
+        // event(new CsvStatusUpdate(projectData: $this->projectData, project_data_id: $this->projectData->id));
     }
 }

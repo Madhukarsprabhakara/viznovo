@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ReadCsvController;
 use App\Ai\Agents\WebResearch;
+use App\Models\ProjectData;
 //Live deploy
 ini_set('max_execution_time', 1200);
 
@@ -34,7 +35,9 @@ Route::get('reverbtest', function () {
     return Inertia::render('Test/ReverbTest');
 })->middleware(['auth', 'verified'])->name('reverbtest');
 Route::get('fireevent', function () {
+    $projectData=ProjectData::latest()->first();
     event(new App\Events\TrackerCreated(trackerId: random_int(1, 1_000_000)));
+    event(new App\Events\CsvStatusUpdate(projectData: $projectData, project_data_id: $projectData->id));
     return 'Event Fired';
 })->middleware(['auth', 'verified'])->name('fireevent');
 Route::get('danad', function () {
