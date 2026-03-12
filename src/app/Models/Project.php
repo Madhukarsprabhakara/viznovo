@@ -64,7 +64,7 @@ class Project extends Model
 
     public function files()
     {
-        return $this->hasMany(ProjectData::class);
+        return $this->hasMany(ProjectData::class)->with('projectDataLogs');
     }
     public function tables()
     {

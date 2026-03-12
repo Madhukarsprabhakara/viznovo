@@ -12,7 +12,8 @@ use App\Services\ProjectDataCsvService;
 use App\Models\Project;
 use App\Models\User;
 use App\Ai\Agents\DiscoverCSVColumnDataType;
-
+use App\Events\CsvStatusUpdate;
+use App\Services\ProjectDataLogService;
 class IdentifyCsvColumnDataTypes implements ShouldQueue
 {
     use Batchable, Queueable;
@@ -42,6 +43,20 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
         $records = $csvTextTableService->getRecordsForDataTypeIdentification($this->projectData, $schemaName, $tableName, 20);
         $recordsString = json_encode($records); // convert the records to json format to send to openai or gemini
         //send 20 records to openai or gemini for data type identification
+        // event(new CsvStatusUpdate(status_message: 'Identifying CSV column data types', project_data_id: $this->projectData->id));
+        //log the creation of csv text table
+        $projectDataLogService = new ProjectDataLogService();
+
+        $projectDataLog= [
+            'project_data_id' => $this->projectData->id,
+            'status_message' => 'Identifying CSV column data types',
+            'job' => 'IdentifyCsvColumnDataTypes',
+        ];
+        $projectDataLogService->log($projectDataLog);
+        $this->projectData->projectDataLogs;
+        // event(new CsvStatusUpdate(projectData: $this->projectData, project_data_id: $this->projectData->id));
+    
+
         $discovery = (new DiscoverCSVColumnDataType)->forUser(User::find($this->projectData->user_id))
             ->prompt(
                 'Here are sample 20 records from the CSV table:\n\n' . $recordsString,
@@ -67,6 +82,14 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
         $projectDataCsvService = new ProjectDataCsvService();
         $projectDataCsvService->storeCsvColumns($this->projectData, $columnDataTypes, 'dt_table', (int) $this->projectData->user_id);
 
+        $projectDataLog= [
+            'project_data_id' => $this->projectData->id,
+            'status_message' => 'CSV column data types identified',
+            'job' => 'IdentifyCsvColumnDataTypes',
+        ];
+        $projectDataLogService->log($projectDataLog);
+        $this->projectData->projectDataLogs;
+        // event(new CsvStatusUpdate(projectData: $this->projectData, project_data_id: $this->projectData->id));
 
     }
 }

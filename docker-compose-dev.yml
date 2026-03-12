@@ -86,9 +86,25 @@ services:
     depends_on:
       - irep_nginx
       - irep_php
+      - irep_reverb
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
     networks:
       - irep
+    restart: unless-stopped
+
+  irep_reverb:
+    build:
+      context: .
+      dockerfile: php-dev.dockerfile
+    container_name: irep_reverb
+    volumes:
+        - ./src:/var/www/html
+    working_dir: /var/www/html
+    ports:
+      - 8080:8080
+    entrypoint: ["php", "artisan", "reverb:start", "--host","0.0.0.0", "--port","8080", "--hostname", "irep_php"]
+    networks:
+        - irep
     restart: unless-stopped

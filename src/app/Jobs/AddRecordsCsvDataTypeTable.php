@@ -8,6 +8,8 @@ use Illuminate\Bus\Batchable;
 use App\Services\CsvDTTableService;
 use App\Services\ProjectService;
 use App\Models\Project;
+use App\Events\CsvStatusUpdate;
+use App\Services\ProjectDataLogService;
 class AddRecordsCsvDataTypeTable implements ShouldQueue
 {
     use Batchable, Queueable;
@@ -42,5 +44,18 @@ class AddRecordsCsvDataTypeTable implements ShouldQueue
         $csvDTTableService->addRecordsToCsvDataTypeTable($schemaName, $tableName, $records);
         $this->projectData->is_csv_data_type_table_populated = true;
         $this->projectData->save();
+
+        //log the creation of csv data type table
+        $projectDataLogService = new ProjectDataLogService();
+
+        $projectDataLog= [
+            'project_data_id' => $this->projectData->id,
+            'status_message' => 'Imported',
+            'job' => 'AddRecordsCsvDataTypeTable',
+        ];
+        $projectDataLogService->log($projectDataLog);
+        $this->projectData->projectDataLogs;
+        // event(new CsvStatusUpdate(projectData: $this->projectData, project_data_id: $this->projectData->id));
+        // event(new CsvStatusUpdate(status_message: 'Records added to the table', project_data_id: $this->projectData->id));
     }
 }

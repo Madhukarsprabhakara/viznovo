@@ -10,6 +10,9 @@ use App\Services\CsvFileService;
 use App\Services\ProjectService;
 use App\Services\ProjectDataCsvService;
 use App\Models\Project;
+use App\Events\CsvStatusUpdate;
+use App\Services\ProjectDataLogService;
+use App\Models\ProjectDataLog;
 class CreateCsvTextTable implements ShouldQueue
 {
     use Batchable, Queueable;
@@ -49,6 +52,18 @@ class CreateCsvTextTable implements ShouldQueue
         //add entries in project_data_csvs table for each column of csv
         $projectDataCsvService = new ProjectDataCsvService();
         $projectDataCsvService->storeCsvColumns($this->projectData, $columns, 'text_table', (int) $this->projectData->user_id);
+        // event(new CsvStatusUpdate(status_message: 'CSV Text Table Created', project_data_id: $this->projectData->id));
 
+        //log the creation of csv text table
+        $projectDataLogService = new ProjectDataLogService();
+
+        $projectDataLog= [
+            'project_data_id' => $this->projectData->id,
+            'status_message' => 'CSV Text Table Created',
+            'job' => 'CreateCsvTextTable',
+        ];
+        $projectDataLogService->log($projectDataLog);
+        $this->projectData->projectDataLogs;
+        // event(new CsvStatusUpdate(projectData: $this->projectData, project_data_id: $this->projectData->id));
     }
 }
