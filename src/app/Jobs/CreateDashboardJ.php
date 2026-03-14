@@ -43,7 +43,7 @@ class CreateDashboardJ implements ShouldQueue
         $projectDataMetricsService = new ProjectDataMetricsService();
         $pdf_website_content_insights = ReportLog::where('report_id', $this->report->id)
             ->where('agent', 'ManualModeQualitativeDataInsights')
-            ->first()->response;
+            ->first()?->response;
         $open_ended_response_insights = ReportLogOpenEnded::query()
             ->where('report_id', $this->report->id)
             ->whereIn('agent', [

@@ -31,6 +31,7 @@ use App\Services\QdaService;
 use App\Jobs\ManualModeMetricsDiscoveryJ;
 use App\Jobs\ManualModeQualitativeDataInsightsJ;
 use App\Jobs\CreateDashboardJ;
+use App\Services\DispatchJobsService;
 use Spatie\Browsershot\Browsershot;
 
 use Illuminate\Support\Facades\Auth;
@@ -792,6 +793,7 @@ class ReportController extends Controller
             $qdaJobs = $qdaService->createJobs($project, $csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
 
             $jsonQda = json_encode($qda);
+            // return $qdaJobs;
             //$jsonData = json_encode($input_data);
             $jsonMetricData = json_encode($input_metric_data);
 
@@ -799,19 +801,55 @@ class ReportController extends Controller
             $prompt = $request->input('prompt');
             $analysisPlanString = $prompt;
 
+            //check for csv existence
+            //check for pdf existence
+            //check for open ended responses for first and incremental analysis
 
+            $decideAndDispatch = new DispatchJobsService();
+
+            $truthValues = $decideAndDispatch->decideAndDispatch($input_metric_data, $qda, $qdaJobs);
+            $chain = [];
+            $qdaExists = $truthValues['pdfExists'] || $truthValues['websiteContentExists'];
+            if ($truthValues['pgsqlTableExists'] || $qdaExists) {
+                $batchJobs = [];
+                if ($truthValues['pgsqlTableExists']) {
+                    $batchJobs[] = new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key);
+                }
+                if ($qdaExists) {
+                    $batchJobs[] = new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key);
+                }
+                // Only add the batch if we actually have jobs
+                if (!empty($batchJobs)) {
+                    $chain[] = Bus::batch($batchJobs)->allowFailures();
+                }
+            }
+            if ($truthValues['openEndedFirstChunkExists']) {
+                $chain[]= Bus::batch($qdaJobs['first_chunk_jobs'] ?? [])->allowFailures();
+            }
+            if ($truthValues['openEndedIncrementalExists']) {
+                $chain[]= Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures();
+            }
+            if (!empty($chain)) {
+                $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key);
+                Bus::chain($chain)->dispatch();
+            }
+           
             $idb = null;
-            Bus::chain([
+            
+            // if ($truthValues['pgsqlTableExists'] && $truthValues['pdfExists'] && $truthValues['websiteContentExists'] && $truthValues['openEndedFirstChunkExists'] && $truthValues['openEndedIncrementalExists']) {
+            //     Bus::chain([
 
-                Bus::batch([
-                    new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key),
-                    new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key)
-                ])->allowFailures(),
-                Bus::batch($qdaJobs['first_chunk_jobs'] ?? [])->allowFailures(),
-                Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures(),
-                new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key)
+            //         Bus::batch([
+            //             new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key),
+            //             new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key)
+            //         ])->allowFailures(),
+            //         Bus::batch($qdaJobs['first_chunk_jobs'] ?? [])->allowFailures(),
+            //         Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures(),
+            //         new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key)
 
-            ])->dispatch();
+            //     ])->dispatch();
+            // }
+
 
             return $idb;
         } catch (\Exception $e) {
