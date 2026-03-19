@@ -17,13 +17,13 @@ class CsvStatusUpdate implements ShouldBroadcastNow
     /**
      * Create a new event instance.
      */
-    public array $projectData;
+    // public array $projectData;
+    public int $project_id;
     public int $project_data_id;
     public int $user_id;
-    public function __construct(array $projectData, int $project_data_id, int $user_id) 
+    public function __construct(int $project_id, int $project_data_id, int $user_id) 
     {
-
-        $this->projectData = $projectData;
+        $this->project_id = $project_id;
         $this->project_data_id = $project_data_id;
         $this->user_id = $user_id;
     }

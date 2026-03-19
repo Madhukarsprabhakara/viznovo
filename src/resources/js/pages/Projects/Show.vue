@@ -3,6 +3,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import { type BreadcrumbItem } from '@/types';
 import { Head, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import PlaceholderPattern from '@/components/PlaceholderPattern.vue';
 import { ref, onMounted, watch, computed } from 'vue';
 import { Eye, EyeOff } from 'lucide-vue-next';
@@ -16,7 +17,7 @@ const props = defineProps<{
     files: any[]
 }>()
 
-const localFiles = ref(props.files);
+const localFiles = ref<any>(props.files);
 
 
 watch(() => props.files, (newFiles) => {
@@ -34,12 +35,26 @@ const breadcrumbs = ref<BreadcrumbItem[]>([
 
 const subscribedIds = new Set<number | string>()
 
+type ProjectEventDataResponse = {
+    project?: any
+    files?: any[]
+}
+
+async function fetchProjectEventData() {
+    const projectId = props.project?.id
+    if (!projectId) return
+
+    try {
+        const response = await axios.get<ProjectEventDataResponse>(`/projects/${projectId}/event-data`)
+        localFiles.value = response?.data?.files ?? []
+    } catch (error) {
+        console.error('Failed to fetch project event data', error)
+    }
+}
+
 function userChannelSubscription() {
-    useEcho<{ status_message?: string }>(`App.Models.User.${usePage().props.auth.user.id}`, 'CsvStatusUpdate', (e) => {
-        // console.log('Received status update for user', usePage().props.auth.user.id, e.projectData.files)
-        localFiles.value = e.projectData.files;
-        console.log('Event data '+localFiles.value);
-        
+    useEcho<{ status_message?: string }>(`App.Models.User.${usePage().props.auth.user.id}`, 'CsvStatusUpdate', async (e) => {
+        await fetchProjectEventData()
     });
 }
 userChannelSubscription();

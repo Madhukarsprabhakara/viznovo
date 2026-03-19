@@ -72,6 +72,9 @@ Route::post('/projects', [App\Http\Controllers\ProjectController::class, 'store'
 Route::get('/projects/{project}', [App\Http\Controllers\ProjectController::class, 'show'])
     ->middleware(['auth', 'verified'])->name('projects.show');
 
+Route::get('/projects/{project}/event-data', [App\Http\Controllers\ProjectController::class, 'getProjectEventData'])
+    ->middleware(['auth', 'verified'])->name('projects.eventData');
+
 Route::post('/projects/{project}/upload', [App\Http\Controllers\ProjectController::class, 'upload'])
     ->middleware(['auth', 'verified'])->name('projects.upload');
 
