@@ -16,6 +16,8 @@ use App\Jobs\AddRecordsCsvDataTypeTable;
 use App\Services\CsvFileService;
 use App\Events\CsvStatusUpdate;
 use App\Services\ProjectDataLogService;
+use App\Rules\ValidCsvHeaders;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
@@ -127,8 +129,22 @@ class ProjectController extends Controller
 
         try {
             $request->validate([
-                'files' => 'required|array',
-                'files.*' => 'file|mimes:csv,pdf,txt|max:204800', // max 200MB per file
+                'files' => ['required', 'array'],
+                'files.*' => [
+                    'file',
+                    'max:204800', // max 200MB per file
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if (!$value instanceof \Illuminate\Http\UploadedFile) {
+                            return;
+                        }
+
+                        $extension = strtolower(trim((string) $value->getClientOriginalExtension()));
+                        if (!in_array($extension, ['csv', 'pdf', 'txt'], true)) {
+                            $fail("The {$attribute} field must be a file of type: csv, pdf, txt.");
+                        }
+                    },
+                    new ValidCsvHeaders(),
+                ],
             ]);
             $user_id = $request->user()->id;
             $files = $request->file('files');
@@ -152,7 +168,10 @@ class ProjectController extends Controller
                         'job' => 'AddRecordsCsvDataTypeTable',
                     ];
                     $projectDataLogService->log($projectDataLog);
-                    
+                    // return [
+                    //     'project' => $project,
+                    //     'files' => $project->files, // assuming $project->files returns the list
+                    // ];
                     event(new CsvStatusUpdate([
                         'project' => $project,
                         'files' => $project->files, // assuming $project->files returns the list
@@ -186,6 +205,8 @@ class ProjectController extends Controller
             // $projectService->handleFileUpload($project, $file);
 
             return redirect()->route('projects.show', $project)->with('success', 'File uploaded successfully.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to upload file: ' . $e->getMessage()])->withInput();
         }

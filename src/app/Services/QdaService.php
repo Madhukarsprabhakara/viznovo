@@ -12,7 +12,8 @@ class QdaService
     public function createJobs(Project $project, array $openEndedResponseChunks, Report $report, ?string $modelKey = null, $user = null)
     {
         $firstChunkJobs = [];
-        $remainingChunkJobs = [];
+        // $remainingChunkJobs = [];
+        $incrementalChain = [];
 
         foreach ($openEndedResponseChunks as $tableEntry) {
             if (!is_array($tableEntry)) {
