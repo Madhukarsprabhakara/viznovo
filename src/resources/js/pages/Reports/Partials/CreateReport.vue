@@ -105,7 +105,7 @@
 
          <button
           class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          @click="testRun"
+          @click="saveReport"
           :disabled="loading || !canTestRun"
         >
           <svg
@@ -250,12 +250,12 @@ async function testRun() {
 
 function saveReport() {
   saveGeneratedReport.prompt = prompt.value
-  saveGeneratedReport.result = reportHtml.value
+  //saveGeneratedReport.result = reportHtml.value
   saveGeneratedReport.title = reportName.value
   saveGeneratedReport.model_key = selectedModelKey.value
   saveGeneratedReport.is_automatic = 0
 
-  saveGeneratedReport.post(`/projects/${projectId}/sreports`, {
+  saveGeneratedReport.post(`/projects/${projectId}/greports`, {
     onSuccess: () => {
       // Optionally show a success message or reset form
     },

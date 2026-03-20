@@ -31,7 +31,7 @@ class ProjectService
     }
     public function getProjectsByUser($userId)
     {
-        return \App\Models\Project::where('user_id', $userId)->get();
+        return \App\Models\Project::where('user_id', $userId)->orderBy('created_at', 'asc')->get();
     }
     public function handleFileUpload(Project $project, $file)
     {

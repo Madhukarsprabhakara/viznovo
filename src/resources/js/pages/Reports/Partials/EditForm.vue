@@ -163,7 +163,7 @@ function saveReport() {
           </svg>
 
           <span v-if="loading">Processing...</span>
-          <span v-else>Test Run</span>
+          <span v-else>Rerun the report</span>
         </button>
 
         <button
