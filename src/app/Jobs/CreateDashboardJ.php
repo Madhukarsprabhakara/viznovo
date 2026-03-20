@@ -10,6 +10,12 @@ use App\Models\ReportLogOpenEnded;
 use App\Services\ProjectDataMetricsService;
 use App\Services\JsonDataService;
 use App\Ai\Agents\CreateDashboard;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\Tries;
+
+#[Timeout(660)]
+#[Tries(3)]
 
 class CreateDashboardJ implements ShouldQueue
 {
@@ -36,6 +42,10 @@ class CreateDashboardJ implements ShouldQueue
     /**
      * Execute the job.
      */
+    public function middleware(): array
+    {
+        return [new WithoutOverlapping($this->report->id)->releaseAfter(30)->expireAfter(720)];
+    }
     public function handle(): void
     {
         //
