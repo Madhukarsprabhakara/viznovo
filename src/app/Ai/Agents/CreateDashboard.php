@@ -84,6 +84,8 @@ class CreateDashboard implements Agent, Conversational, HasTools
 
 - Just the HTML code should be returned that can be rendered directly on browser.
 
+- Double check that it is renderable on the browser as is without any modifications.
+
 - USE ONLY tailwindcss. 
 
 - Do NOT show raw JSON records or results.

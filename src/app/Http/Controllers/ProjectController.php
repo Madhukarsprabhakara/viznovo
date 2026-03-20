@@ -16,7 +16,9 @@ use App\Jobs\AddRecordsCsvDataTypeTable;
 use App\Services\CsvFileService;
 use App\Events\CsvStatusUpdate;
 use App\Services\ProjectDataLogService;
-
+use App\Rules\ValidCsvHeaders;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 class ProjectController extends Controller
 {
     /**
@@ -74,6 +76,18 @@ class ProjectController extends Controller
         }
     }
 
+    public function getProjectEventData(Project $project)
+    {
+        //
+        try {
+            return  [
+                'project' => $project,
+                'files' => $project->files, // assuming $project->files returns the list
+            ];
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to load project: ' . $e->getMessage()])->withInput();
+        }
+    }
     /**
      * Show the form for editing the specified resource.
      */
@@ -127,8 +141,22 @@ class ProjectController extends Controller
 
         try {
             $request->validate([
-                'files' => 'required|array',
-                'files.*' => 'file|mimes:csv,pdf,txt|max:204800', // max 200MB per file
+                'files' => ['required', 'array'],
+                'files.*' => [
+                    'file',
+                    'max:204800', // max 200MB per file
+                    function (string $attribute, mixed $value, \Closure $fail): void {
+                        if (!$value instanceof \Illuminate\Http\UploadedFile) {
+                            return;
+                        }
+
+                        $extension = strtolower(trim((string) $value->getClientOriginalExtension()));
+                        if (!in_array($extension, ['csv', 'pdf', 'txt'], true)) {
+                            $fail("The {$attribute} field must be a file of type: csv, pdf, txt.");
+                        }
+                    },
+                    new ValidCsvHeaders(),
+                ],
             ]);
             $user_id = $request->user()->id;
             $files = $request->file('files');
@@ -152,11 +180,16 @@ class ProjectController extends Controller
                         'job' => 'AddRecordsCsvDataTypeTable',
                     ];
                     $projectDataLogService->log($projectDataLog);
-                    
-                    event(new CsvStatusUpdate([
-                        'project' => $project,
-                        'files' => $project->files, // assuming $project->files returns the list
-                    ], project_data_id: $projectData->id, user_id: $user_id));
+                    // return [
+                    //     'project' => $project,
+                    //     'files' => $project->files, // assuming $project->files returns the list
+                    // ];
+                    event(new CsvStatusUpdate(project_id: $project->id, project_data_id: $projectData->id, user_id: $user_id));
+
+                    // [
+                    //     'project' => $project,
+                    //     'files' => $project->files, // assuming $project->files returns the list
+                    // ]
 
                     Bus::batch([
                         [
@@ -172,10 +205,9 @@ class ProjectController extends Controller
                         // All jobs completed successfully...log the success in a separate table with batch id and project data id
                         $projectData->status = 'Imported';
                         $projectData->save();
-                        event(new CsvStatusUpdate([
-                            'project' => $project,
-                            'files' => $project->files, // assuming $project->files returns the list
-                        ], project_data_id: $projectData->id, user_id: $user_id));
+                        event(new CsvStatusUpdate(project_id: $project->id, project_data_id: $projectData->id, user_id: $user_id));
+                    })->catch(function (Batch $batch, Throwable $e) {
+                        // Batch job failure detected...
                     })->dispatch();
                 }
 
@@ -186,6 +218,8 @@ class ProjectController extends Controller
             // $projectService->handleFileUpload($project, $file);
 
             return redirect()->route('projects.show', $project)->with('success', 'File uploaded successfully.');
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to upload file: ' . $e->getMessage()])->withInput();
         }
