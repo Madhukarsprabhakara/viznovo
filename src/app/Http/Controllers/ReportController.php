@@ -850,8 +850,8 @@ class ReportController extends Controller
             //     ])->dispatch();
             // }
 
-
-            return $idb;
+            return to_route('projects.reports.index', $request->project_id)
+                ->with('message', 'Agents are analyzing the data. An email will be sent to you with the link to the dashboard. You may run multiple reports at once.');
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage()
