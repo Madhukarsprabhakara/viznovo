@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ProjectData;
+use App\Models\Report;
 use Illuminate\Support\Facades\Broadcast;
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
@@ -15,4 +16,9 @@ Broadcast::channel('csv.status.update.{projectDataId}', function ($user, int $pr
     }
 
     return $projectData->project && (int) $projectData->project->user_id === (int) $user->id;
+});
+
+Broadcast::channel('App.Models.Report.{reportId}', function ($user, int $reportId) {
+    $report = Report::find($reportId);
+    return (int) $report->user_id === (int) $user->id;
 });

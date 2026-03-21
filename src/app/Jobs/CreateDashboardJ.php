@@ -13,6 +13,7 @@ use App\Ai\Agents\CreateDashboard;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
+use App\Events\ReportStatusUpdate;
 
 #[Timeout(660)]
 #[Tries(3)]
@@ -114,5 +115,23 @@ class CreateDashboardJ implements ShouldQueue
             'end_epoch' => $endEpoch,
             'time_taken_seconds' => $timeTakenSeconds,
         ]);
+
+        if ($this->report->result) {
+            // log the status
+            event(new ReportStatusUpdate(reportId: $this->report->id));
+            \DB::table('report_logs')
+                ->updateOrInsert(
+                    ['report_id' => $this->report->id, 'agent' => 'CreateDashboard'],
+                    ['response' => json_encode($promptResponse), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Dashboard created successfully.']
+                );
+            
+        } else {
+                event(new ReportStatusUpdate(reportId: $this->report->id));
+            \DB::table('report_logs')
+                ->updateOrInsert(
+                    ['report_id' => $this->report->id, 'agent' => 'CreateDashboard'],
+                    ['response' => null, 'error' => 'No dashboard found for the report.', 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Could not create the dashboard for the provided data.']
+                );
+        }
     }
 }

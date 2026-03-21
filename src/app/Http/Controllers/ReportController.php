@@ -33,6 +33,7 @@ use App\Jobs\ManualModeQualitativeDataInsightsJ;
 use App\Jobs\CreateDashboardJ;
 use App\Services\DispatchJobsService;
 use Spatie\Browsershot\Browsershot;
+use App\Events\ReportStatusUpdate;
 
 use Illuminate\Support\Facades\Auth;
 
@@ -831,6 +832,13 @@ class ReportController extends Controller
             }
             if (!empty($chain)) {
                 $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key);
+                \DB::table('report_logs')
+                ->updateOrInsert(
+                    ['report_id' => $report->id, 'agent' => 'CreateDashboard'],
+                    ['response' => null, 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'You can relax and have coffee! Agents have started analyzing the data. You will receive an email with the dashboard link once it is ready.' ]
+                );
+                event(new ReportStatusUpdate(reportId: $report->id));
+
                 Bus::chain($chain)->dispatch();
             }
            
@@ -850,7 +858,7 @@ class ReportController extends Controller
             //     ])->dispatch();
             // }
 
-            return to_route('projects.reports.index', $request->project_id)
+            return to_route('reports.edit', $report->id)
                 ->with('message', 'Agents are analyzing the data. An email will be sent to you with the link to the dashboard. You may run multiple reports at once.');
         } catch (\Exception $e) {
             return response()->json([
@@ -979,6 +987,7 @@ class ReportController extends Controller
     {
         //
         try {
+            $report->reportLogs;
             return Inertia::render('Reports/Edit', [
                 'report' => $report,
                 'project' => $report->project,
