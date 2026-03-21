@@ -8,4 +8,5 @@ class ReportLog extends Model
 {
     //
      protected $guarded = [];
+     protected $hidden = ['response'];
 }

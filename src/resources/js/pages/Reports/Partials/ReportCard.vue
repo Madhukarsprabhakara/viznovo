@@ -10,7 +10,17 @@
         </p>
       </div>
       <div class="flex shrink-0 self-center gap-2">
+        
         <span class="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">{{ report.time_taken_minutes }} min</span>
+        <button
+          type="button"
+          class="inline-flex items-center rounded-md p-1 text-yellow-600 hover:bg-yellow-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+          title="View report logs"
+          aria-label="View report logs"
+          @click="isNotificationOpen = true"
+        >
+          <Info class="size-4" aria-hidden="true" />
+        </button>
         <!-- <span class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">{{ report.time_taken_minutes }} min</span> -->
         <a
           :href="`/reports/${report.uuid}`"
@@ -60,12 +70,22 @@
       </div>
     </div>
   </div>
+
+  <DynamicNotification
+    :show="isNotificationOpen"
+    :title="`${report.title}`"
+    description="Processing history for this report"
+    :logs="reportLogs"
+    @close="isNotificationOpen = false"
+  />
 </template>
 
 <script setup>
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
-import { MoreVertical, Edit, Trash2, ExternalLink } from 'lucide-vue-next'
+import DynamicNotification from '@/components/DynamicNotification.vue'
 import { Link, useForm } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
+import { MoreVertical, Edit, Trash2, ExternalLink, Info } from 'lucide-vue-next'
 
 const props = defineProps({
   report: {
@@ -75,6 +95,11 @@ const props = defineProps({
 })
 
 const form = useForm()
+const isNotificationOpen = ref(false)
+
+const reportLogs = computed(() => {
+  return Array.isArray(props.report?.report_logs) ? props.report.report_logs : []
+})
 
 const deleteReportFinally = (reportId) => {
   form.delete(`/reports/${reportId}`, {

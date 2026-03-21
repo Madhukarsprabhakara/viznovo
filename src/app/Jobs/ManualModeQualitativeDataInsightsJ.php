@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Bus\Batchable;
 use App\Ai\Agents\ManualModeQualitativeDataInsights;
 use App\Services\JsonDataService;
+use App\Events\ReportStatusUpdate;
 use App\Models\ReportLog;
 
 class ManualModeQualitativeDataInsightsJ implements ShouldQueue
@@ -70,17 +71,18 @@ class ManualModeQualitativeDataInsightsJ implements ShouldQueue
 
         if ($qdaInsightsDecoded) {
             // log the status
-
+             event(new ReportStatusUpdate(reportId: $this->report->id));
             \DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeDataInsights'],
-                    ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now()]
+                    ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Qualitative insights generated successfully for pdfs and websites.']
                 );
         } else {
+             event(new ReportStatusUpdate(reportId: $this->report->id));
             \DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeDataInsights'],
-                    ['response' => null, 'error' => 'No qualitative insights found for the report.', 'created_at' => now(), 'updated_at' => now()]
+                    ['response' => null, 'error' => 'No qualitative insights found for the report.', 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Something went wrong with qualitative insights generation.']
                 );
         }
     }

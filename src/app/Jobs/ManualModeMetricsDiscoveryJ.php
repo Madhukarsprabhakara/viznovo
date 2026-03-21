@@ -9,6 +9,7 @@ use Illuminate\Bus\Batchable;
 use App\Services\JsonDataService;
 use App\Services\ProjectDataMetricsService;
 use App\Ai\Agents\ManualModeMetricsDiscovery;
+use App\Events\ReportStatusUpdate;
 
 
 class ManualModeMetricsDiscoveryJ implements ShouldQueue
@@ -81,18 +82,19 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
         $sqls = $projectDataMetricsService->store($metricSqls, $this->user->id, $this->report->id);
         if ($projectDataMetricsService->checkMetricsExistForReport($this->report->id)) {
             // log the status
-
+            event(new ReportStatusUpdate(reportId: $this->report->id));
             \DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeMetricsDiscovery'],
-                    ['response' => json_encode($metricSqls), 'error' => null, 'created_at' => now(), 'updated_at' => now()]
+                    ['response' => json_encode($metricSqls), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Metrics discovered successfully.']
                 );
             
         } else {
+            event(new ReportStatusUpdate(reportId: $this->report->id));
             \DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeMetricsDiscovery'],
-                    ['response' => null, 'error' => 'No metrics found for the report.', 'created_at' => now(), 'updated_at' => now()]
+                    ['response' => null, 'error' => 'No metrics found for the report.', 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Something went wrong with metrics discovery.']
                 );
         }
     }

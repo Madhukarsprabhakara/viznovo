@@ -33,4 +33,8 @@ class Report extends Model
     {
         return $this->belongsTo(Project::class);
     }
+    public function reportLogs()
+    {
+        return $this->hasMany(ReportLog::class)->orderBy('created_at', 'asc');
+    }
 }

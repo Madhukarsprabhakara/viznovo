@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { usePage, useForm } from '@inertiajs/vue3'
+import { computed, ref, onMounted, watch } from 'vue'
+import { usePage, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
-import { CheckCircle } from 'lucide-vue-next'
+import DynamicNotification from '@/components/DynamicNotification.vue'
+import { CheckCircle, Info } from 'lucide-vue-next'
+import { useEcho } from '@laravel/echo-vue'
 
 const page = usePage()
 const projectId = page.props.report.project_id
@@ -10,12 +12,14 @@ const report = page.props.report // { id, prompt, result, model_key? }
 const modelList = page.props.aiModels ?? []
 
 const LOCAL_PROMPT_KEY = (projectId, reportId) => `reportPrompt_${projectId}_${reportId}`
+const LOCAL_NOTIFICATION_KEY = (reportId) => `reportLogsNotificationVisible_${reportId}`
 
 const title = ref('')
 const prompt = ref('')
 const reportHtml = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
+const isNotificationOpen = ref(true)
 
 // NEW: selected model "key" (not id)
 const selectedModelKey = ref('')
@@ -29,12 +33,36 @@ const saveGeneratedReport = useForm({
   model_key: '' // optional: include if you persist it on update
 })
 
+const reportLogs = computed(() => {
+  return Array.isArray(report?.report_logs) ? report.report_logs : []
+})
+
+function openNotification() {
+  isNotificationOpen.value = true
+  localStorage.setItem(LOCAL_NOTIFICATION_KEY(report.id), '1')
+}
+
+function closeNotification() {
+  isNotificationOpen.value = false
+  localStorage.setItem(LOCAL_NOTIFICATION_KEY(report.id), '0')
+}
+
+function userChannelSubscription() {
+  useEcho(`App.Models.Report.${report.id}`, 'ReportStatusUpdate', async (e) => {
+    // await fetchProjectEventData()
+    console.log('Received ReportStatusUpdate event for report')
+    router.visit(window.location.href)
+  });
+}
+userChannelSubscription();
 // Load initial values from server or localStorage
 onMounted(() => {
   const saved = localStorage.getItem(LOCAL_PROMPT_KEY(projectId, report.id))
+  const savedNotificationState = localStorage.getItem(LOCAL_NOTIFICATION_KEY(report.id))
   title.value = report.title ?? ''
   prompt.value = saved ?? report.prompt ?? ''
   reportHtml.value = report.result ?? ''
+  isNotificationOpen.value = savedNotificationState === null ? true : savedNotificationState === '1'
 
   // Default model selection:
   // 1) use report.model_key if provided by backend
@@ -98,12 +126,9 @@ function saveReport() {
           Edit prompt to analyze data and generate a dashboard
         </label>
 
-        <textarea
-          id="prompt"
-          v-model="prompt"
+        <textarea id="prompt" v-model="prompt"
           class="flex-1 resize-none rounded border border-gray-300 p-3 text-sm focus:border-blue-400 focus:outline-none min-h-[200px]"
-          placeholder="Type your prompt here..."
-        />
+          placeholder="Type your prompt here..." />
       </div>
 
       <!-- Model Selection -->
@@ -112,19 +137,10 @@ function saveReport() {
           <legend class="text-sm/6 font-semibold text-gray-900">Select a model</legend>
 
           <div class="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-4">
-            <label
-              v-for="model in modelList"
-              :key="model.id"
-              :aria-label="model.name"
-              class="group relative flex rounded-lg border border-gray-300 bg-white p-4 has-[:disabled]:border-gray-400 has-[:disabled]:bg-gray-200 has-[:disabled]:opacity-25 has-[:checked]:outline has-[:focus-visible]:outline has-[:checked]:outline-2 has-[:focus-visible]:outline-[3px] has-[:checked]:-outline-offset-2 has-[:focus-visible]:-outline-offset-1 has-[:checked]:outline-indigo-600"
-            >
-              <input
-                v-model="selectedModelKey"
-                type="radio"
-                name="ai-model"
-                :value="model.key"
-                class="absolute inset-0 appearance-none focus:outline focus:outline-0"
-              />
+            <label v-for="model in modelList" :key="model.id" :aria-label="model.name"
+              class="group relative flex rounded-lg border border-gray-300 bg-white p-4 has-[:disabled]:border-gray-400 has-[:disabled]:bg-gray-200 has-[:disabled]:opacity-25 has-[:checked]:outline has-[:focus-visible]:outline has-[:checked]:outline-2 has-[:focus-visible]:outline-[3px] has-[:checked]:-outline-offset-2 has-[:focus-visible]:-outline-offset-1 has-[:checked]:outline-indigo-600">
+              <input v-model="selectedModelKey" type="radio" name="ai-model" :value="model.key"
+                class="absolute inset-0 appearance-none focus:outline focus:outline-0" />
 
               <div class="flex-1">
                 <span class="block text-sm font-medium text-gray-900">{{ model.name }}</span>
@@ -138,26 +154,17 @@ function saveReport() {
       </div>
 
       <!-- Actions -->
-      <div
-        v-if="errorMessage"
-        class="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800 whitespace-pre-wrap"
-      >
+      <div v-if="errorMessage"
+        class="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800 whitespace-pre-wrap">
         {{ errorMessage }}
       </div>
 
       <div class="w-full bg-white p-4 flex gap-2 z-10 mt-4">
         <button
           class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
-          @click="testRun"
-          :disabled="loading || !title || !prompt"
-        >
-          <svg
-            v-if="loading"
-            class="animate-spin h-5 w-5 mr-2 text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
+          @click="testRun" :disabled="loading || !title || !prompt">
+          <svg v-if="loading" class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg"
+            fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
@@ -166,10 +173,7 @@ function saveReport() {
           <span v-else>Rerun the report</span>
         </button>
 
-        <button
-          class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
-          @click="clearPrompt"
-        >
+        <button class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition" @click="clearPrompt">
           Clear
         </button>
       </div>
@@ -178,26 +182,30 @@ function saveReport() {
     <!-- Report Preview Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label class="mb-2 font-semibold text-gray-700">Dashboard Preview</label>
-        <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]" v-html="reportHtml" />
+        <div class="mb-2 flex items-center gap-2">
+          <label class="font-semibold text-gray-700">Dashboard Preview</label>
+          <button type="button"
+            class="inline-flex items-center rounded-md p-1 text-yellow-600 hover:bg-yellow-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+            title="View report logs" aria-label="View report logs" @click="openNotification">
+            <Info class="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]"
+          v-html="reportHtml" />
       </div>
 
       <div class="w-full bg-white p-4 border-t flex items-center gap-2 z-10 mt-4">
-        <input
-          v-model="title"
-          type="text"
-          placeholder="Dashboard Name"
-          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-        />
+        <input v-model="title" type="text" placeholder="Dashboard Name"
+          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" />
 
-        <button
-          class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          :disabled="!reportHtml || !title"
-          @click="saveReport"
-        >
+        <button class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+          :disabled="!reportHtml || !title" @click="saveReport">
           Save Report
         </button>
       </div>
     </div>
+
+    <DynamicNotification :show="isNotificationOpen" :title="`${report.title}`"
+      description="Updates from agents will appear here as data is analyzed." :logs="reportLogs" @close="closeNotification" />
   </div>
 </template>

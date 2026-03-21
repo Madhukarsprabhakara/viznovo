@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Ai\Agents\ManualModeQualitativeCsvDataInsightsIncrement;
 use App\Services\JsonDataService;
+use App\Events\ReportStatusUpdate;
 class QdaOpenResponsesIncremental implements ShouldQueue
 {
     use Batchable, Queueable;
@@ -107,6 +108,14 @@ class QdaOpenResponsesIncremental implements ShouldQueue
                     ],
                     ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'table_name' => $this->tableName, 'chunk_index' => $this->chunkIndex, 'total_chunks' => $this->totalChunkCount]
                 );
+                if ($this->chunkIndex+1 === $this->totalChunkCount) {
+                    event(new ReportStatusUpdate(reportId: $this->report->id));
+                    \DB::table('report_logs')
+                        ->updateOrInsert(
+                            ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeCsvDataInsightsIncrement'],
+                            ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Qualitative data insights for csv open-ended data completed.']
+                        );
+                } 
             
         } else {
             \DB::table('report_log_open_endeds')
@@ -119,6 +128,13 @@ class QdaOpenResponsesIncremental implements ShouldQueue
                     ],
                     ['response' => null, 'error' => $decodeError ?: 'No insights found for the report.', 'created_at' => now(), 'updated_at' => now(), 'table_name' => $this->tableName, 'chunk_index' => $this->chunkIndex, 'total_chunks' => $this->totalChunkCount]
                 );
+
+                \DB::table('report_logs')
+                        ->updateOrInsert(
+                            ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeCsvDataInsightsIncrement'],
+                            ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Something went wrong with incremental insights generation.']
+                        );
+
         }
 
     }
