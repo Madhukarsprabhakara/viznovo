@@ -14,7 +14,14 @@
               </div>
 
               <div class="min-w-0 flex-1 pt-0.5">
-                <p class="text-sm font-medium text-gray-900">{{ title }}</p>
+                <div class="flex items-center gap-2">
+                  <Coffee
+                    class="size-4 text-amber-600"
+                    :class="{ 'motion-safe:animate-[spin_3s_linear_infinite]': isAgentWorking }"
+                    aria-hidden="true"
+                  />
+                  <p class="text-sm font-medium text-gray-900">{{ title }}</p>
+                </div>
                 <p v-if="description" class="mt-1 text-sm text-gray-500">{{ description }}</p>
 
                 <div class="mt-3 max-h-80 overflow-y-auto rounded-md bg-gray-50 p-3">
@@ -48,7 +55,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Info, X } from 'lucide-vue-next'
+import { Coffee, Info, X } from 'lucide-vue-next'
 
 const props = defineProps({
   show: {
@@ -77,5 +84,9 @@ const normalizedLogs = computed(() => {
     message: log.display_message || log.error || 'Log entry recorded.',
     timestamp: log.created_at || '',
   }))
+})
+
+const isAgentWorking = computed(() => {
+  return !normalizedLogs.value.some((log) => log.message === 'Dashboard created successfully.')
 })
 </script>

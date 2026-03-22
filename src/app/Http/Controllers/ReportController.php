@@ -659,6 +659,7 @@ class ReportController extends Controller
                     'prompt' => $request->prompt,
                     'model_key' => $request->model_key,
                     'is_automatic' => false,
+                    'start_epoch' => now()->timestamp,
                 ]);
             }
 
@@ -832,6 +833,8 @@ class ReportController extends Controller
             }
             if (!empty($chain)) {
                 $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key);
+                \DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
+                event(new ReportStatusUpdate(reportId: $report->id));
                 \DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $report->id, 'agent' => 'CreateDashboard'],

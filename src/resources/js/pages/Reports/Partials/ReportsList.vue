@@ -20,7 +20,7 @@
 
           <Link :href="`/reports/${$page.props.project.id}/create`"
             class="ml-3 inline-flex items-center gap-2 rounded-md bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-indigo-400 hover:via-indigo-500 hover:to-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-            <span>Let agents analyze</span>
+            <span>Analyze</span>
             <span class="inline-flex items-center rounded-md bg-white/15 px-2 py-0.5 text-[11px] font-semibold ring-1 ring-white/25">AI</span>
           </Link>
         </div>

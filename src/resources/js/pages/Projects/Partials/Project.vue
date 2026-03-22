@@ -1,13 +1,12 @@
 <template>
-  <div class=" ">
-    
+  <div class="h-full">
     <div class="flex space-x-3">
       <div class="min-w-0 flex-1">
         <p class="text-sm font-semibold text-gray-900">
-          <Link :href="`/projects/${project.id}`" class="hover:underline">{{ project.name }}</Link>
+          {{ project.name }}
         </p>
       </div>
-      <div class="flex shrink-0 self-center">
+      <div class="flex shrink-0 self-center" @click.stop>
         <Menu as="div" class="relative inline-block text-left">
           <MenuButton class="relative flex items-center rounded-full text-gray-400 outline-offset-[6px] hover:text-gray-600">
             <span class="absolute -inset-2"></span>
