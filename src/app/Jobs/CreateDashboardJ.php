@@ -27,17 +27,19 @@ class CreateDashboardJ implements ShouldQueue
     protected $project;
     protected $modelKey;
     protected $user;
+    protected $qualitativeDataRaw;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($user, $prompt, Report $report, $project, $modelKey)
+    public function __construct($user, $prompt, Report $report, $project, $modelKey, $qualitativeDataRaw = null)
     {
         $this->report = $report;
         $this->prompt = $prompt;
         $this->project = $project;
         $this->modelKey = $modelKey;
         $this->user = $user;
+        $this->qualitativeDataRaw = $qualitativeDataRaw;
     }
 
     /**
@@ -71,15 +73,15 @@ class CreateDashboardJ implements ShouldQueue
         $qdaInsightsDecoded['qualitative_insights'][] = $qdaOpoenEndedInsights['qualitative_insights'] ?? null;
         $data_for_prompt_design = [
             // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
-
+            'qualitative_data_raw' => $this->qualitativeDataRaw,
             'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($this->report->id),
             'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
         ];
-
+       
         if ($this->modelKey == 'gpt-5') {
             $response = (new CreateDashboard)->forUser($this->user)
                 ->prompt(
-                    'Here are the instructions...\n\n' . $this->prompt . ' and the insights:' . json_encode($data_for_prompt_design),
+                    'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
                     provider: [
                         'openai' => 'gpt-5.2',
                         'gemini' => 'gemini-3.1-pro-preview',
@@ -89,7 +91,7 @@ class CreateDashboardJ implements ShouldQueue
         } else {
             $response = (new CreateDashboard)->forUser($this->user)
                 ->prompt(
-                    'Here are the instructions...\n\n' . $this->prompt . ' and the insights:' . json_encode($data_for_prompt_design),
+                    'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
                     provider: [
                         'gemini' => 'gemini-3.1-pro-preview',
                         'openai' => 'gpt-5.2',

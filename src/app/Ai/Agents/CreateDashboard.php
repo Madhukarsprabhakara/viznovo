@@ -24,7 +24,10 @@ class CreateDashboard implements Agent, Conversational, HasTools
 
             {
             
-            
+            "qualitative_data_raw": {
+                "pdf_content": [],
+                "website_urls": [],
+            },
             
             "metrics_insights": [
                 {

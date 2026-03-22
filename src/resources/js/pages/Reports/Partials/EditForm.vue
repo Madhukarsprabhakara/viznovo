@@ -190,12 +190,12 @@ function saveReportWithoutAnalysis() {
           </svg>
 
           <span v-if="loading">Processing...</span>
-          <span v-else>Reanalyze and Save</span>
+          <span v-else>Reanalyze and save</span>
         </button>
 
         <button class="flex-1 rounded border border-transparent bg-emerald-400 py-2 text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-500 disabled:hover:bg-gray-100"
           @click="saveReportWithoutAnalysis" :disabled="loading || !canSaveWithoutAnalysis">
-          Save Name Only
+          Save name only
         </button>
       </div>
     </div>

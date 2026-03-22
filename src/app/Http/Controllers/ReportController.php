@@ -794,7 +794,7 @@ class ReportController extends Controller
             // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
             $qdaJobs = $qdaService->createJobs($project, $csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
 
-            $jsonQda = json_encode($qda);
+            // $jsonQd = json_encode($qda);
             // return $qdaJobs;
             //$jsonData = json_encode($input_data);
             $jsonMetricData = json_encode($input_metric_data);
@@ -812,14 +812,16 @@ class ReportController extends Controller
             $truthValues = $decideAndDispatch->decideAndDispatch($input_metric_data, $qda, $qdaJobs);
             $chain = [];
             $qdaExists = $truthValues['pdfExists'] || $truthValues['websiteContentExists'];
-            if ($truthValues['pgsqlTableExists'] || $qdaExists) {
+            $onlyQdaExists = $qdaExists && !$truthValues['pgsqlTableExists'] && !$truthValues['openEndedFirstChunkExists'] && !$truthValues['openEndedIncrementalExists'];
+            
+            if ($truthValues['pgsqlTableExists']) {
                 $batchJobs = [];
                 if ($truthValues['pgsqlTableExists']) {
-                    $batchJobs[] = new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key);
+                    $batchJobs[] = new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key, $qda);
                 }
-                if ($qdaExists) {
-                    $batchJobs[] = new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key);
-                }
+                // if ($qdaExists) {
+                //     $batchJobs[] = new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQd, $report, $project, $request->model_key);
+                // }
                 // Only add the batch if we actually have jobs
                 if (!empty($batchJobs)) {
                     $chain[] = Bus::batch($batchJobs)->allowFailures();
@@ -831,8 +833,8 @@ class ReportController extends Controller
             if ($truthValues['openEndedIncrementalExists']) {
                 $chain[]= Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures();
             }
-            if (!empty($chain)) {
-                $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key);
+            if (!empty($chain) || $onlyQdaExists) {
+                $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key, $qda);
                 \DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
                 event(new ReportStatusUpdate(reportId: $report->id));
                 \DB::table('report_logs')

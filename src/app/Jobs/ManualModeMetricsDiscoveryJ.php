@@ -26,8 +26,8 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
     protected $report;
     protected $project;
     protected $modelKey;
-
-    public function __construct(User $user, $analysisPlanString, $jsonMetricData, $report, $project, ?string $modelKey = null)
+    protected $qualitativeDataRaw;
+    public function __construct(User $user, $analysisPlanString, $jsonMetricData, $report, $project, ?string $modelKey = null, $qualitativeDataRaw = null)
     {
         $this->user = $user;
         $this->analysisPlanString = $analysisPlanString;
@@ -35,6 +35,7 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
         $this->report = $report;
         $this->project = $project;
         $this->modelKey = $modelKey;
+        $this->qualitativeDataRaw = $qualitativeDataRaw;
     }
 
 
@@ -46,12 +47,18 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
         //
 
         //$tableDataString = json_encode($input_data['pgsql_tables']);
+        if ($this->qualitativeDataRaw) {
+            $promptString= 'Here is the raw qualitative data extracted from the sources...' . json_encode($this->qualitativeDataRaw);
+        }
+        else {
+            $promptString= null;
+        }
         $jsonDataService = new JsonDataService();
         $projectDataMetricsService = new ProjectDataMetricsService();
         if ($this->modelKey == 'gpt-5') {
             $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($this->user)
                 ->prompt(
-                    'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData,
+                    'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData .'\n\n'. $promptString,
                     provider: [
                         'openai' => 'gpt-5.2',
                         'gemini' => 'gemini-3.1-pro-preview',
@@ -61,7 +68,7 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
         } else {
             $metrics_sql = (new ManualModeMetricsDiscovery)->forUser($this->user)
                 ->prompt(
-                    'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData,
+                    'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData .'\n\n'. $promptString,
                     provider: [
                         'gemini' => 'gemini-3.1-pro-preview',
                         'openai' => 'gpt-5.2',
