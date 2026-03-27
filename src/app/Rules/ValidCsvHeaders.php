@@ -44,9 +44,9 @@ class ValidCsvHeaders implements ValidationRule
             return;
         }
 
-        [$emptyHeaderColumns, $duplicateHeaders] = $this->analyzeHeaders($headers);
+        [$emptyHeaderColumns, $duplicateHeaders, $reservedHeaders] = $this->analyzeHeaders($headers);
 
-        if (count($emptyHeaderColumns) === 0 && count($duplicateHeaders) === 0) {
+        if (count($emptyHeaderColumns) === 0 && count($duplicateHeaders) === 0 && count($reservedHeaders) === 0) {
             return;
         }
 
@@ -58,6 +58,10 @@ class ValidCsvHeaders implements ValidationRule
 
         if (count($duplicateHeaders) > 0) {
             $issues[] = 'duplicate column names: ' . implode(', ', $duplicateHeaders);
+        }
+
+        if (count($reservedHeaders) > 0) {
+            $issues[] = 'reserved column name "id" found at columns: ' . implode(', ', $reservedHeaders) . '. Rename or remove that header';
         }
 
         $fail('The ' . $attribute . ' has an invalid CSV header row (' . implode('; ', $issues) . ').');
@@ -115,6 +119,7 @@ class ValidCsvHeaders implements ValidationRule
     {
         $emptyHeaderColumns = [];
         $normalizedHeaders = [];
+        $reservedHeaders = [];
 
         foreach (array_values($headers) as $index => $header) {
             $cell = (string) $header;
@@ -130,10 +135,14 @@ class ValidCsvHeaders implements ValidationRule
                 $emptyHeaderColumns[] = $index + 1;
             }
 
+            if ($normalized === 'id') {
+                $reservedHeaders[] = $index + 1;
+            }
+
             $normalizedHeaders[] = $normalized;
         }
 
-        return [$emptyHeaderColumns, $this->findDuplicates($normalizedHeaders)];
+        return [$emptyHeaderColumns, $this->findDuplicates($normalizedHeaders), $reservedHeaders];
     }
 
     private function stripUtf8Bom(string $value): string

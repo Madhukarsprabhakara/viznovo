@@ -13,11 +13,21 @@ class ProjectDataMetricsService
             $metricWithResults = [];
             $now = now();
 
+            // Accept either a single decoded payload with a top-level metrics key
+            // or the existing array-of-payloads structure used elsewhere.
+            if (array_key_exists('metrics', $metricsArray)) {
+                $metricsArray = [$metricsArray];
+            }
+
             if ($reportId !== null) {
                 DB::table('project_data_metrics')->where('report_id', '=', $reportId)->delete();
             }
 
             foreach ($metricsArray as $metricData) {
+                if (!is_array($metricData)) {
+                    continue;
+                }
+
                 foreach (($metricData['metrics'] ?? []) as $metric) {
                     if (!is_array($metric)) {
                         continue;
@@ -32,8 +42,6 @@ class ProjectDataMetricsService
                     }
                     $sqlQuery = (string) $sqlQuery;
 
-                    [$result, $error] = $this->executeSql($sqlQuery);
-
                     $row = [
                         'report_id' => $reportId,
                         'user_id' => $metricUserId,
@@ -41,9 +49,9 @@ class ProjectDataMetricsService
                         'metric_name' => $metric['metric_name'] ?? null,
                         'description' => $metric['description'] ?? null,
                         'sql_query' => $sqlQuery,
-                        'result' => $result !== null ? json_encode($result) : null,
-                        'error' => $error,
-                        'is_successful' => $error === null,
+                        'result' => null,
+                        'error' => null,
+                        'is_successful' => null,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
@@ -53,7 +61,7 @@ class ProjectDataMetricsService
             }
 
             if (!empty($metricWithResults)) {
-                
+
                 foreach (array_chunk($metricWithResults, 500) as $chunk) {
                     DB::table('project_data_metrics')->insert($chunk);
                 }
@@ -92,6 +100,6 @@ class ProjectDataMetricsService
     }
     public function checkMetricsExistForReport(int $reportId): bool
     {
-        return ProjectDataMetric::where('report_id', $reportId)->exists(); 
+        return ProjectDataMetric::where('report_id', $reportId)->exists();
     }
 }

@@ -456,7 +456,7 @@ class CsvDTTableService
             ->values()
             ->toArray();
     }
-    public function createCsvDataTypeTable(string $tableName, string $schemaName, array $columns)
+    public function createCsvDataTypeTable(string $tableName, string $schemaName, array $columns, bool $recreateIfExists = false)
     {
         $schemaName = strtolower(trim($schemaName));
         $tableName = strtolower(trim($tableName));
@@ -478,7 +478,11 @@ class CsvDTTableService
 
         $qualifiedTable = $schemaName . '.' . $tableName;
         if (Schema::connection($connection)->hasTable($qualifiedTable)) {
-            return true;
+            if ($recreateIfExists) {
+                DB::connection($connection)->statement('DROP TABLE IF EXISTS "' . $schemaName . '"."' . $tableName . '"');
+            } else {
+                return true;
+            }
         }
 
         $typeInfoByLaravelType = DB::table('csv_data_types')
@@ -505,6 +509,8 @@ class CsvDTTableService
         ];
 
         Schema::connection($connection)->create($qualifiedTable, function (Blueprint $table) use ($columns, $typeInfoByLaravelType, $safeBlueprintTypes) {
+            $table->id();
+
             foreach ($columns as $col) {
                 if (!is_array($col)) {
                     continue;
@@ -512,6 +518,9 @@ class CsvDTTableService
 
                 $dbColumn = strtolower(trim((string) ($col['db_column'] ?? '')));
                 if ($dbColumn === '') {
+                    continue;
+                }
+                if ($dbColumn === 'id') {
                     continue;
                 }
                 if (strlen($dbColumn) > 55) {
@@ -592,8 +601,20 @@ class CsvDTTableService
             throw new InvalidArgumentException('Target table does not exist: ' . $qualifiedTable);
         }
 
-        return DB::connection($connection)
-            ->table($qualifiedTable)
+        $hasIdColumn = DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->where('column_name', 'id')
+            ->exists();
+
+        $query = DB::connection($connection)->table($qualifiedTable);
+
+        if ($hasIdColumn) {
+            $query->orderBy('id');
+        }
+
+        return $query
             ->get()
             ->map(function ($item) {
                 return $this->normalizeRowForJson((array) $item);
@@ -649,6 +670,9 @@ class CsvDTTableService
             foreach ($record as $rawColumn => $rawValue) {
                 $columnName = $this->normalizeColumnName($rawColumn);
                 if ($columnName === null || !array_key_exists($columnName, $columnMetadata)) {
+                    continue;
+                }
+                if ($columnName === 'id') {
                     continue;
                 }
 

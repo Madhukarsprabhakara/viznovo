@@ -51,7 +51,7 @@ class ProjectData extends Model
             return;
         }
 
-        foreach (['csv_text_table_name', 'csv_data_type_table_name'] as $field) {
+        foreach (['csv_text_table_name', 'csv_data_type_table_name', 'csv_derived_table_name'] as $field) {
             $tableName = strtolower(trim((string) ($this->{$field} ?? '')));
             if ($tableName === '' || preg_match('/\A[a-z_][a-z0-9_]*\z/', $tableName) !== 1 || strlen($tableName) > 63) {
                 continue;
