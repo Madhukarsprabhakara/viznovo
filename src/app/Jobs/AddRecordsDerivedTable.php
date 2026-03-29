@@ -2,11 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Models\ProjectData;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Bus\Batchable;
 use App\Services\DerivedTableService;
 use App\Services\ProjectDataLogService;
+use Illuminate\Support\Facades\Log;
 
 class AddRecordsDerivedTable implements ShouldQueue
 {
@@ -15,13 +17,13 @@ class AddRecordsDerivedTable implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    protected $schemaName;
-    protected $projectData;
+    protected string $schemaName;
+    protected int $projectDataId;
 
-    public function __construct(string $schemaName, $projectData)
+    public function __construct(string $schemaName, int $projectDataId)
     {
         $this->schemaName = $schemaName;
-        $this->projectData = $projectData;
+        $this->projectDataId = $projectDataId;
     }
 
     /**
@@ -29,17 +31,28 @@ class AddRecordsDerivedTable implements ShouldQueue
      */
     public function handle(): void
     {
+        $projectData = ProjectData::find($this->projectDataId);
+
+        if (!$projectData) {
+            Log::warning('Skipping derived table population because the project data row no longer exists.', [
+                'project_data_id' => $this->projectDataId,
+                'schema_name' => $this->schemaName,
+            ]);
+
+            return;
+        }
+
         $derivedTableService = new DerivedTableService();
-        $tableName = (string) $this->projectData->csv_derived_table_name;
-        $records = $derivedTableService->getSourceRecordsForDerivedTable($this->projectData, $this->schemaName);
+        $tableName = (string) $projectData->csv_derived_table_name;
+        $records = $derivedTableService->getSourceRecordsForDerivedTable($projectData, $this->schemaName);
         $inserted = $derivedTableService->addRecordsDerivedTable($this->schemaName, $tableName, $records);
 
-        $this->projectData->is_csv_derived_table_populated = true;
-        $this->projectData->save();
+        $projectData->is_csv_derived_table_populated = true;
+        $projectData->save();
 
         $projectDataLogService = new ProjectDataLogService();
         $projectDataLogService->log([
-            'project_data_id' => $this->projectData->id,
+            'project_data_id' => $projectData->id,
             'status_message' => 'Derived table populated with ' . $inserted . ' records',
             'job' => 'AddRecordsDerivedTable',
         ]);

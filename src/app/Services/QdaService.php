@@ -217,15 +217,10 @@ class QdaService
                     
                     $jobs[] = new DerivedColumnChunkProcessing([
                         'prompt' => $derivedColumn['prompt'],
-                        'chunk_index' => $index + 1,
-                        'total_chunks' => $totalChunks,
                         'derived_db_column' => $derivedDbColumn,
                         'db_column' => $sourceColumn,
                         'records' => array_values($chunk),
-                        'model_key' => $modelKey,
-                        'user_id' => $userId,
-                        'project_data_id' => (int) $projectData->id,
-                    ], $schemaName, $tableName);
+                    ], $schemaName, $tableName, (int) $projectData->id, $userId, $modelKey, $index + 1, $totalChunks);
                 }
             }
         }

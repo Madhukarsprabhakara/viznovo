@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Models\CsvDataType;
 use App\Models\ProjectDataCsv;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Models\ProjectData;
 use InvalidArgumentException;
 use App\Models\Project;
 use App\Jobs\CreateDerivedTable;
 use App\Jobs\AddRecordsDerivedTable;
+use App\Jobs\DispatchDerivedColumnBatch;
 
 class DerivedTableService
 {
@@ -178,17 +180,242 @@ class DerivedTableService
             ->values()
             ->toArray();
     }
-    public function createDJobs(Project $project)
+    public function createDJobs(Project $project, ?string $modelKey = null, ?int $userId = null, ?int $reportId = null, ?string $prompt = null, mixed $qualitativeDataRaw = null): array
     {
-            $projectDataList = $project->derivedTables()->get();
-            // return $projectDataList;
-            $jobs = [];
-            foreach ($projectDataList as $projectData) {
-                $jobs[] = new CreateDerivedTable($project->schema_name, $projectData);
-                $jobs[] = new AddRecordsDerivedTable($project->schema_name, $projectData);
-            }
-    
-            return $jobs;
+        $projectDataList = $project->derivedTables()->get();
+        $jobs = [];
 
+        if ($projectDataList->isEmpty()) {
+            return $jobs;
+        }
+
+        foreach ($projectDataList as $projectData) {
+            $jobs[] = new CreateDerivedTable($project->schema_name, (int) $projectData->id);
+            $jobs[] = new AddRecordsDerivedTable($project->schema_name, (int) $projectData->id);
+        }
+
+        $jobs[] = new DispatchDerivedColumnBatch((int) $project->id, $userId, $modelKey, $reportId, $prompt, $qualitativeDataRaw);
+
+        return $jobs;
+    }
+
+    public function storeDerivedData(mixed $decoded, string $schemaName, string $tableName, array $chunk): int
+    {
+        $schemaName = $this->normalizeIdentifier($schemaName, 63, true);
+        $tableName = $this->normalizeIdentifier($tableName, 55);
+        $derivedColumn = $this->normalizeIdentifier((string) ($chunk['derived_db_column'] ?? ''), 55);
+
+        $connection = DB::getDefaultConnection();
+        if (DB::connection($connection)->getDriverName() !== 'pgsql') {
+            throw new InvalidArgumentException('storeDerivedData only supports pgsql; got ' . DB::connection($connection)->getDriverName());
+        }
+
+        $qualifiedTable = $schemaName . '.' . $tableName;
+        if (!Schema::connection($connection)->hasTable($qualifiedTable)) {
+            throw new InvalidArgumentException('Target table does not exist: ' . $qualifiedTable);
+        }
+
+        $columnNames = DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->pluck('column_name')
+            ->map(function ($columnName) {
+                return strtolower(trim((string) $columnName));
+            })
+            ->values()
+            ->toArray();
+
+        if (!in_array('id', $columnNames, true)) {
+            throw new InvalidArgumentException('Target table does not have an id column: ' . $qualifiedTable);
+        }
+
+        if (!in_array($derivedColumn, $columnNames, true)) {
+            throw new InvalidArgumentException('Derived column does not exist on target table: ' . $qualifiedTable . '.' . $derivedColumn);
+        }
+
+        $updates = $this->extractDerivedUpdates($decoded, $chunk, $derivedColumn);
+
+        if ($updates === []) {
+            Log::warning('Derived column chunk returned no usable row updates.', [
+                'schema_name' => $schemaName,
+                'table_name' => $tableName,
+                'derived_db_column' => $derivedColumn,
+                'decoded' => $decoded,
+            ]);
+
+            return 0;
+        }
+
+        $updatedRows = 0;
+        foreach ($updates as $id => $value) {
+            try {
+                $affected = DB::connection($connection)
+                    ->table($qualifiedTable)
+                    ->where('id', $id)
+                    ->update([$derivedColumn => $this->normalizeDerivedValue($value)]);
+
+                $updatedRows += (int) $affected;
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to update derived row from AI output.', [
+                    'schema_name' => $schemaName,
+                    'table_name' => $tableName,
+                    'derived_db_column' => $derivedColumn,
+                    'row_id' => $id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return $updatedRows;
+    }
+
+    private function normalizeIdentifier(string $value, int $maxLength, bool $allowLeadingUnderscore = false): string
+    {
+        $value = strtolower(trim($value));
+
+        if ($value === '') {
+            throw new InvalidArgumentException('Identifier cannot be empty.');
+        }
+
+        if (strlen($value) > $maxLength) {
+            throw new InvalidArgumentException('Identifier exceeds maximum length: ' . $value);
+        }
+
+        $pattern = $allowLeadingUnderscore ? '/^[a-z_][a-z0-9_]*$/' : '/^[a-z][a-z0-9_]*$/';
+        if (preg_match($pattern, $value) !== 1) {
+            throw new InvalidArgumentException('Invalid identifier: ' . $value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function extractDerivedUpdates(mixed $decoded, array $chunk, string $derivedColumn): array
+    {
+        $payload = $this->unwrapDecodedPayload($decoded);
+        $records = [];
+
+        if (is_array($payload) && isset($payload['records']) && is_array($payload['records'])) {
+            $records = $payload['records'];
+        } elseif (is_array($payload) && array_is_list($payload)) {
+            $records = $payload;
+        }
+
+        if ($records === []) {
+            return [];
+        }
+
+        $sourceIds = collect($chunk['records'] ?? [])
+            ->pluck('id')
+            ->filter(function ($id) {
+                return filter_var($id, FILTER_VALIDATE_INT) !== false;
+            })
+            ->map(function ($id) {
+                return (int) $id;
+            })
+            ->all();
+
+        $allowedIds = array_fill_keys($sourceIds, true);
+        $updates = [];
+
+        foreach ($records as $record) {
+            if (!is_array($record)) {
+                continue;
+            }
+
+            $id = $record['id'] ?? null;
+            if (filter_var($id, FILTER_VALIDATE_INT) === false) {
+                continue;
+            }
+
+            $id = (int) $id;
+            if ($allowedIds !== [] && !isset($allowedIds[$id])) {
+                continue;
+            }
+
+            if (array_key_exists($derivedColumn, $record)) {
+                $updates[$id] = $record[$derivedColumn];
+                continue;
+            }
+
+            if (array_key_exists('derived_db_column', $record)) {
+                $updates[$id] = $record['derived_db_column'];
+                continue;
+            }
+
+            $candidateKeys = array_values(array_filter(array_keys($record), function (string $key) {
+                return $key !== 'id';
+            }));
+
+            if (count($candidateKeys) === 1) {
+                $updates[$id] = $record[$candidateKeys[0]];
+            }
+        }
+
+        return $updates;
+    }
+
+    private function unwrapDecodedPayload(mixed $decoded): mixed
+    {
+        if (!is_array($decoded)) {
+            return $decoded;
+        }
+
+        if (array_key_exists('prompt_response', $decoded) && is_string($decoded['prompt_response'])) {
+            $nested = json_decode($decoded['prompt_response'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $this->unwrapDecodedPayload($nested);
+            }
+        }
+
+        if (array_is_list($decoded)) {
+            foreach ($decoded as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                if (isset($item['records']) && is_array($item['records'])) {
+                    return $item;
+                }
+
+                if (array_key_exists('prompt_response', $item) && is_string($item['prompt_response'])) {
+                    $nested = json_decode($item['prompt_response'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        return $this->unwrapDecodedPayload($nested);
+                    }
+                }
+            }
+        }
+
+        return $decoded;
+    }
+
+    private function normalizeDerivedValue(mixed $value): mixed
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_float($value) && (is_nan($value) || is_infinite($value))) {
+            return null;
+        }
+
+        if (is_array($value) || is_object($value)) {
+            try {
+                return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                return null;
+            }
+        }
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        return $value;
     }
 }

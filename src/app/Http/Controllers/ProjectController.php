@@ -16,6 +16,7 @@ use App\Jobs\AddRecordsCsvDataTypeTable;
 use App\Services\CsvFileService;
 use App\Events\CsvStatusUpdate;
 use App\Services\ProjectDataLogService;
+use App\Services\ProjectDataService;
 use App\Rules\ValidCsvHeaders;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -136,7 +137,7 @@ class ProjectController extends Controller
         }
     }
 
-    public function upload(Request $request, Project $project, ProjectService $projectService, CsvFileService $csvFileService)
+    public function upload(Request $request, Project $project, ProjectService $projectService, CsvFileService $csvFileService, ProjectDataService $projectDataService)
     {
 
         try {
@@ -167,6 +168,10 @@ class ProjectController extends Controller
 
                     $projectData->csv_text_table_name = $csvFileService->getTextTableNameFromCsvName($file, $projectData->id);
                     $projectData->csv_data_type_table_name = $csvFileService->getDataTypeTableNameFromCsvName($file, $projectData->id);
+                    $projectData->csv_derived_table_name = $projectDataService->buildDerivedTableNameFromSource(
+                        $projectData->csv_data_type_table_name,
+                        (int) $projectData->id,
+                    );
 
                     $projectData->save();
                     // return $projectData;

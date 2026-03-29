@@ -35,12 +35,11 @@ use App\Jobs\IdentifyMetricsAndDerivedTableColumns;
 use App\Services\DispatchJobsService;
 use Spatie\Browsershot\Browsershot;
 use App\Events\ReportStatusUpdate;
-use App\Services\DerivedTableService;
-use App\Jobs\CreateDerivedTable;
-use App\Jobs\AddRecordsDerivedTable;
+use App\Jobs\DispatchDerivedTableJobs;
 use App\Ai\Agents\CompleteDataSetCreation;
-
+use App\Jobs\ExecuteDerivedMetrics;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -634,7 +633,7 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService, CsvDTTableService $csvDTTableService, QdaService $qdaService, DerivedTableService $derivedTableService)
+    public function create(Request $request, Project $project, ProjectDataMetricsService $projectDataMetricsService, CsvDTTableService $csvDTTableService, QdaService $qdaService)
     {
         //
         try {
@@ -727,10 +726,12 @@ class ReportController extends Controller
                         $pgsqlContentArr['user_id'] = $file->user_id;
                         $pgsqlContentArr['schema_name'] = $project->schema_name;
                         $pgsqlContentArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlContentArr['derived_table_name'] = $file->csv_derived_table_name;
                         $pgsqlContentArr['table_schema'] = $file->projectDataCsvs;
                         $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
                         $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlOpenEndedArr['derived_table_name'] = $file->csv_derived_table_name;
                         // $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getRecordsFromOpenEndedColumns($project);
                         $pgsqlFinalArr[] = $pgsqlContentArr;
                         // $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
@@ -801,7 +802,7 @@ class ReportController extends Controller
             ];
             // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
             $qdaJobs = $qdaService->createJobs($project, $csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
-            $derivedChunkJobs=$qdaService->createDerivedColumnJobs($project, $request->model_key, $request->user());
+            //$derivedChunkJobs=$qdaService->createDerivedColumnJobs($project, $request->model_key, $request->user());
             // $jsonQd = json_encode($qda);
             // return $qdaJobs;
             //$jsonData = json_encode($input_data);
@@ -828,14 +829,7 @@ class ReportController extends Controller
                 if ($truthValues['pgsqlTableExists']) {
                     // $batchJobs[] = new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key, $qda);
                     $chain[] = new IdentifyMetricsAndDerivedTableColumns($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key);
-                    $projectDataList = $project->derivedTables;
-                    // return $projectDataList;
-                    foreach ($projectDataList as $projectData) {
-                        $chain[] = new CreateDerivedTable($project->schema_name, $projectData);
-                        $chain[] = new AddRecordsDerivedTable($project->schema_name, $projectData);
-
-                    }
-                    $chain[] = Bus::batch($derivedChunkJobs)->allowFailures();
+                    $chain[] = new DispatchDerivedTableJobs((int) $project->id, $userId, $request->model_key, $report->id, $prompt, $qda);
                 }
 
                 // Only add the batch if we actually have jobs
@@ -852,7 +846,7 @@ class ReportController extends Controller
             }
             if (!empty($chain) || $onlyQdaExists) {
                 // $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key, $qda);
-                \DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
+                DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
                 event(new ReportStatusUpdate(reportId: $report->id));
                 // \DB::table('report_logs')
                 // ->updateOrInsert(

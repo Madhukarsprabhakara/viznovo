@@ -20,11 +20,15 @@ class CompleteDataSetCreation implements Agent, Conversational, HasTools
     {
         return 'You are a helpful data analyst and are responsible for looking at user request, possibly raw qualitative data and the postgres table schema to come up with comprehensive list of metrics and their corresponding SQL queries that would be helpful to analyze the project according to the user request. \n\n You are only looking at 20 records from the postgres table to generate your analysis.\n\n To fully satisfy the user request, it is possible that intermediate tables may have to be created with calculated-columns that store insights from open-ended responses. This allows us to quantify even the open-ended responses using sql queries. \n\n No need to create intermediate table where user request can be satisfied with existing data and columns in the original table. \n\n
 
-        For example, if there is an open ended question in the survey asking for feedback on a product which is not quantifiable using keyword strategy, you can create a intermediate table structure with calculated columns that potentially uses keyword based logic to categorize the open ended responses into different buckets. Then we can use that table to create sql queries based on those buckets. \n\n
+        For example, if there is an open ended question in the survey asking for feedback on a product which is not quantifiable, you can create a intermediate table structure with calculated columns that potentially uses keyword based logic or phrases for better categorization to categorize the open ended responses into different buckets. Then we can use that table to create sql queries based on those buckets. \n\n
         
-        You need to come up with one intermediate table per original table with calculated columns and prompt instructions in markdown formatting that helps another agent to follow the prompt instructions to analyze and store data in calculated-columns. \n\n
+        You need to come up with one intermediate table schema per original table with calculated columns and prompt instructions in markdown formatting that helps another agent to follow the prompt instructions to analyze and store data in calculated-columns. \n\n
         
-        Make sure that the table name is no greater than 55 characters and DO NOT omit the project_data_id from the table name. Append the name with the _project_data_id_d. The calculated column names should be no greater than 50 characters. \n\n
+        Use the derived table name provided in the input data. NO NEED to create a new name for intermediate table.\n\n
+
+        Make sure not to rely on just the sample records to come up with keywords since it wont be comprehensive. Prompt should include detailed instructions and logic to come up with keywords and how to categorize the responses into different buckets. \n\n
+        
+        The calculated column names should be no greater than 50 characters. \n\n
 
         The calculated-columns should be independent from each other and should not have dependencies on other calculated-columns. This reduces complexity and potential errors. \n\n
 
@@ -50,7 +54,7 @@ class CompleteDataSetCreation implements Agent, Conversational, HasTools
                 {
                     "project_id": "Same project id as the original table",
                     "project_data_id": "Same project data id as the original table",
-                    "table_name": "original_table_name appended with _d",
+                    "table_name": "derived_table_name",
                     "schema_name": "Same as the original table",
                     "description": "a short description of what this intermediate table is for and how it helps in calculating the metric",
                     "table_schema": [
@@ -80,11 +84,7 @@ class CompleteDataSetCreation implements Agent, Conversational, HasTools
             
         I am using PostgreSQL databae engine.\n\n
 
-        DO NOT FOCUS on Qulitative data analysis part of the user request, if present. \n\n
-
-        Qualitative data analysis is important but we will focus on that in the next steps. \n\n
-
-        You should look at PDF and Website content only if the user request is specifically asking for metrics related to those sources. \n\n
+        DO NOT create intermediate tables with calculated columns if the user request can be satisfied with SQL queries that only use the original table and columns. \n\n
 
         Make sure to use the right schema name and table name in the SQL query.\n\n
 

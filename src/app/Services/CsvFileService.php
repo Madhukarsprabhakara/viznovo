@@ -7,10 +7,8 @@ use Illuminate\Http\UploadedFile;
 use League\Csv\Reader;
 class CsvFileService
 {
-    public function getDataTypeTableNameFromCsvName($csvFileNameOrFile, $projectDataId): string
+    private function buildTableNameWithSuffix(string $originalName, string $suffix, int $maxLength = 55): string
     {
-        $originalName = $this->extractCsvBaseName($csvFileNameOrFile);
-
         $tableBase = $this->sanitizeTableIdentifier($originalName);
         if ($tableBase === '') {
             $tableBase = 'csv';
@@ -20,72 +18,45 @@ class CsvFileService
             $tableBase = 't_' . $tableBase;
         }
 
-        $suffix = '_data_type_' . (string) $projectDataId;
-        $maxLength = 55;
-
         if (strlen($suffix) >= $maxLength) {
-            $fallback = 't' . $suffix;
-            $fallback = substr($fallback, 0, $maxLength);
-            if (preg_match('/^[0-9]/', $fallback) === 1) {
-                $fallback = 't_' . $fallback;
-                $fallback = substr($fallback, 0, $maxLength);
-            }
-            return $fallback;
+            $fallback = 't' . substr($suffix, 0, $maxLength - 1);
+            $fallback = rtrim($fallback, '_');
+
+            return $fallback === '' ? 't' : $fallback;
         }
 
         $baseMaxLength = $maxLength - strlen($suffix);
         $tableBase = substr($tableBase, 0, $baseMaxLength);
         $tableBase = rtrim($tableBase, '_');
+
         if ($tableBase === '') {
             $tableBase = 'csv';
         }
+
         if (preg_match('/^[0-9]/', $tableBase) === 1) {
             $tableBase = 't_' . $tableBase;
             $tableBase = substr($tableBase, 0, $baseMaxLength);
             $tableBase = rtrim($tableBase, '_');
         }
 
+        if ($tableBase === '') {
+            $tableBase = 'csv';
+        }
+
         return $tableBase . $suffix;
+    }
+
+    public function getDataTypeTableNameFromCsvName($csvFileNameOrFile, $projectDataId): string
+    {
+        $originalName = $this->extractCsvBaseName($csvFileNameOrFile);
+
+        return $this->buildTableNameWithSuffix($originalName, '_data_type_' . (string) $projectDataId);
     }
     public function getTextTableNameFromCsvName($csvFileNameOrFile, $projectDataId): string
     {
         $originalName = $this->extractCsvBaseName($csvFileNameOrFile);
 
-        $tableBase = $this->sanitizeTableIdentifier($originalName);
-        if ($tableBase === '') {
-            $tableBase = 'csv';
-        }
-
-        if (preg_match('/^[0-9]/', $tableBase) === 1) {
-            $tableBase = 't_' . $tableBase;
-        }
-
-        $suffix = '_text_' . (string) $projectDataId;
-        $maxLength = 55;
-
-        if (strlen($suffix) >= $maxLength) {
-            $fallback = 't' . $suffix;
-            $fallback = substr($fallback, 0, $maxLength);
-            if (preg_match('/^[0-9]/', $fallback) === 1) {
-                $fallback = 't_' . $fallback;
-                $fallback = substr($fallback, 0, $maxLength);
-            }
-            return $fallback;
-        }
-
-        $baseMaxLength = $maxLength - strlen($suffix);
-        $tableBase = substr($tableBase, 0, $baseMaxLength);
-        $tableBase = rtrim($tableBase, '_');
-        if ($tableBase === '') {
-            $tableBase = 'csv';
-        }
-        if (preg_match('/^[0-9]/', $tableBase) === 1) {
-            $tableBase = 't_' . $tableBase;
-            $tableBase = substr($tableBase, 0, $baseMaxLength);
-            $tableBase = rtrim($tableBase, '_');
-        }
-
-        return $tableBase . $suffix;
+        return $this->buildTableNameWithSuffix($originalName, '_text_' . (string) $projectDataId);
     }
 
     private function extractCsvBaseName($csvFileNameOrFile): string

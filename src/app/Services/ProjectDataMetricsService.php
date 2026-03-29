@@ -42,6 +42,8 @@ class ProjectDataMetricsService
                     }
                     $sqlQuery = (string) $sqlQuery;
 
+                    
+
                     $row = [
                         'report_id' => $reportId,
                         'user_id' => $metricUserId,
@@ -73,7 +75,31 @@ class ProjectDataMetricsService
             return ['error' => $e->getMessage()];
         }
     }
+    public function updateMetricResult($projectDataMetrics) 
+    {
+        try {
+            foreach ($projectDataMetrics as $metric) {
+                if (!isset($metric['id'])) {
+                    continue;
+                }
+                [$result, $error] = $this->executeSql($metric['sql_query'] ?? '');
+                DB::table('project_data_metrics')
+                    ->where('id', $metric['id'])
+                    ->update([
+                        'result' => $result !== null ? json_encode($result) : null,
+                        'error' => $error,
+                        'is_successful' => $error === null,
+                        'updated_at' => now(),
+                    ]);
+            }
 
+            return true;
+        } catch (\Exception $e) {
+            // Handle exceptions, log errors, etc.
+            return false;
+        }
+
+    }
     public function executeSql(string $sql)
     {
         try {

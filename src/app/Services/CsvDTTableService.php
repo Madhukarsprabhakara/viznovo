@@ -12,6 +12,67 @@ use App\Models\Project;
 class CsvDTTableService
 {
 
+    private function normalizeTableName(string $tableName): string
+    {
+        $tableName = strtolower(trim($tableName));
+        $tableName = preg_replace('/[^a-z0-9_]/', '_', $tableName) ?? '';
+        $tableName = preg_replace('/_+/', '_', $tableName) ?? '';
+        $tableName = trim($tableName, '_');
+
+        if ($tableName === '') {
+            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
+        }
+
+        $suffix = '';
+        if (preg_match('/(_project_data_id_\d+_d)$/', $tableName, $matches) === 1) {
+            $suffix = $matches[1];
+        } elseif (preg_match('/(_data_type_\d+)$/', $tableName, $matches) === 1) {
+            $suffix = $matches[1];
+        } elseif (preg_match('/(_text_\d+)$/', $tableName, $matches) === 1) {
+            $suffix = $matches[1];
+        }
+
+        if ($suffix !== '' && strlen($suffix) < 55) {
+            $base = substr($tableName, 0, -strlen($suffix));
+            $base = rtrim($base, '_');
+
+            if ($base === '') {
+                $base = 't';
+            }
+
+            if (preg_match('/^[0-9]/', $base) === 1) {
+                $base = 't_' . $base;
+            }
+
+            $maxBaseLength = 55 - strlen($suffix);
+            $base = substr($base, 0, $maxBaseLength);
+            $base = rtrim($base, '_');
+
+            if ($base === '') {
+                $base = 't';
+            }
+
+            $tableName = $base . $suffix;
+        } else {
+            if (preg_match('/^[0-9]/', $tableName) === 1) {
+                $tableName = 't_' . $tableName;
+            }
+
+            $tableName = substr($tableName, 0, 55);
+            $tableName = rtrim($tableName, '_');
+
+            if ($tableName === '') {
+                $tableName = 't';
+            }
+        }
+
+        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
+            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
+        }
+
+        return $tableName;
+    }
+
     /**
      * JSON encoding in PHP will fail if the payload contains INF/-INF/NaN floats.
      * Normalize those values (and nested arrays) to be JSON-safe.
@@ -459,14 +520,10 @@ class CsvDTTableService
     public function createCsvDataTypeTable(string $tableName, string $schemaName, array $columns, bool $recreateIfExists = false)
     {
         $schemaName = strtolower(trim($schemaName));
-        $tableName = strtolower(trim($tableName));
+        $tableName = $this->normalizeTableName($tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $connection = DB::getDefaultConnection();
@@ -580,14 +637,10 @@ class CsvDTTableService
     public function getRecords(string $schemaName, string $tableName): array
     {
         $schemaName = strtolower(trim($schemaName));
-        $tableName = strtolower(trim($tableName));
+        $tableName = $this->normalizeTableName($tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;
@@ -624,14 +677,10 @@ class CsvDTTableService
     public function addRecordsToCsvDataTypeTable(string $schemaName, string $tableName, array $records)
     {
         $schemaName = strtolower(trim($schemaName));
-        $tableName = strtolower(trim($tableName));
+        $tableName = $this->normalizeTableName($tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         if (empty($records)) {
@@ -757,14 +806,10 @@ class CsvDTTableService
     public function getDataTypeTableRecords($schemaName, $tableName)
     {
         $schemaName = strtolower(trim((string) $schemaName));
-        $tableName = strtolower(trim((string) $tableName));
+        $tableName = $this->normalizeTableName((string) $tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;
@@ -814,14 +859,10 @@ class CsvDTTableService
     {
        
         $schemaName = strtolower(trim((string) $schemaName));
-        $tableName = strtolower(trim((string) $tableName));
+        $tableName = $this->normalizeTableName((string) $tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;
@@ -888,14 +929,10 @@ class CsvDTTableService
     public function getOpenEndedResponsesForIncrementalAnalysis(ProjectData $projectData, $schemaName, $tableName): array
     {
         $schemaName = strtolower(trim((string) $schemaName));
-        $tableName = strtolower(trim((string) $tableName));
+        $tableName = $this->normalizeTableName((string) $tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;
