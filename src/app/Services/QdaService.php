@@ -40,20 +40,32 @@ class QdaService
             return '';
         }
 
-        $latestValue = DB::connection($connection)
+        $latestValues = DB::connection($connection)
             ->table($qualifiedTable)
             ->whereNotNull($derivedColumn)
-            ->where($derivedColumn, '!=', '')
             ->orderByDesc('updated_at_ts')
             ->orderByDesc('id')
-            ->value($derivedColumn);
+            ->limit(50)
+            ->pluck($derivedColumn);
 
-        if ($latestValue === null) {
-            return '';
-        }
+        foreach ($latestValues as $latestValue) {
+            if ($latestValue === null) {
+                continue;
+            }
 
-        if (is_scalar($latestValue)) {
-            return trim((string) $latestValue);
+            if (is_string($latestValue)) {
+                $latestValue = trim($latestValue);
+
+                if ($latestValue === '') {
+                    continue;
+                }
+
+                return $latestValue;
+            }
+
+            if (is_scalar($latestValue)) {
+                return (string) $latestValue;
+            }
         }
 
         return '';
@@ -98,7 +110,6 @@ class QdaService
             }
 
             $chunkCount = count($chunks);
-            $incrementalChain = [];
             for ($chunkIndex = 1; $chunkIndex < $chunkCount; $chunkIndex++) {
                 $chunk = $chunks[$chunkIndex] ?? null;
                 if (!is_array($chunk) || $chunk === []) {
