@@ -250,10 +250,16 @@ class DerivedTableService
         $updatedRows = 0;
         foreach ($updates as $id => $value) {
             try {
+                $updatePayload = [$derivedColumn => $this->normalizeDerivedValue($value)];
+
+                if (in_array('updated_at_ts', $columnNames, true)) {
+                    $updatePayload['updated_at_ts'] = now();
+                }
+
                 $affected = DB::connection($connection)
                     ->table($qualifiedTable)
                     ->where('id', $id)
-                    ->update([$derivedColumn => $this->normalizeDerivedValue($value)]);
+                    ->update($updatePayload);
 
                 $updatedRows += (int) $affected;
             } catch (\Throwable $exception) {

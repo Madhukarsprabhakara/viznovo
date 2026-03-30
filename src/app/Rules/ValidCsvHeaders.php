@@ -9,6 +9,20 @@ use League\Csv\Reader;
 
 class ValidCsvHeaders implements ValidationRule
 {
+    /**
+     * @return array<string, string>
+     */
+    private function getReservedHeaderAliases(): array
+    {
+        return [
+            'id' => 'id',
+            'created_at' => 'created_at_ts',
+            'created_at_ts' => 'created_at_ts',
+            'updated_at' => 'updated_at_ts',
+            'updated_at_ts' => 'updated_at_ts',
+        ];
+    }
+
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (!$value instanceof UploadedFile) {
@@ -61,7 +75,13 @@ class ValidCsvHeaders implements ValidationRule
         }
 
         if (count($reservedHeaders) > 0) {
-            $issues[] = 'reserved column name "id" found at columns: ' . implode(', ', $reservedHeaders) . '. Rename or remove that header';
+            $reservedHeaderMessages = [];
+
+            foreach ($reservedHeaders as $reservedHeader => $columns) {
+                $reservedHeaderMessages[] = '"' . $reservedHeader . '" at columns: ' . implode(', ', $columns);
+            }
+
+            $issues[] = 'reserved column names found: ' . implode(', ', $reservedHeaderMessages) . '. These headers are system-managed. Rename or remove them';
         }
 
         $fail('The ' . $attribute . ' has an invalid CSV header row (' . implode('; ', $issues) . ').');
@@ -120,6 +140,7 @@ class ValidCsvHeaders implements ValidationRule
         $emptyHeaderColumns = [];
         $normalizedHeaders = [];
         $reservedHeaders = [];
+        $reservedHeaderAliases = $this->getReservedHeaderAliases();
 
         foreach (array_values($headers) as $index => $header) {
             $cell = (string) $header;
@@ -130,13 +151,15 @@ class ValidCsvHeaders implements ValidationRule
 
             $cell = trim($cell);
             $normalized = $this->lower($cell);
+            $normalizedIdentifier = $this->normalizeHeaderIdentifier($cell);
 
             if ($normalized === '') {
                 $emptyHeaderColumns[] = $index + 1;
             }
 
-            if ($normalized === 'id') {
-                $reservedHeaders[] = $index + 1;
+            $reservedHeader = $reservedHeaderAliases[$normalized] ?? $reservedHeaderAliases[$normalizedIdentifier] ?? null;
+            if ($reservedHeader !== null) {
+                $reservedHeaders[$reservedHeader][] = $index + 1;
             }
 
             $normalizedHeaders[] = $normalized;
@@ -161,6 +184,17 @@ class ValidCsvHeaders implements ValidationRule
         }
 
         return strtolower($value);
+    }
+
+    private function normalizeHeaderIdentifier(string $value): string
+    {
+        $value = trim($value);
+        $value = str_replace(' ', '_', $value);
+        $value = $this->lower($value);
+        $value = preg_replace('/[^a-z0-9_]/', '_', $value) ?? '';
+        $value = preg_replace('/_+/', '_', $value) ?? '';
+
+        return trim($value, '_');
     }
 
     private function findDuplicates(array $normalizedHeaders): array

@@ -12,6 +12,69 @@ use App\Models\Project;
 class CsvDTTableService
 {
 
+    /**
+     * @return array<int, string>
+     */
+    private function getManagedTimestampColumns(): array
+    {
+        return ['created_at_ts', 'updated_at_ts'];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getReservedColumnNames(): array
+    {
+        return array_merge(['id'], $this->getManagedTimestampColumns());
+    }
+
+    private function tableHasColumn(string $connection, string $schemaName, string $tableName, string $columnName): bool
+    {
+        return DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->where('column_name', $columnName)
+            ->exists();
+    }
+
+    private function ensureManagedTimestampColumns(string $connection, string $schemaName, string $tableName): void
+    {
+        $missingColumns = array_values(array_filter($this->getManagedTimestampColumns(), function (string $columnName) use ($connection, $schemaName, $tableName) {
+            return !$this->tableHasColumn($connection, $schemaName, $tableName, $columnName);
+        }));
+
+        if ($missingColumns === []) {
+            return;
+        }
+
+        Schema::connection($connection)->table($schemaName . '.' . $tableName, function (Blueprint $table) use ($missingColumns) {
+            foreach ($missingColumns as $columnName) {
+                $table->timestamp($columnName)->nullable();
+            }
+        });
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param array<int, string> $availableColumns
+     * @return array<string, mixed>
+     */
+    private function withManagedTimestamps(array $row, array $availableColumns): array
+    {
+        $timestamp = now();
+
+        if (in_array('created_at_ts', $availableColumns, true)) {
+            $row['created_at_ts'] = $timestamp;
+        }
+
+        if (in_array('updated_at_ts', $availableColumns, true)) {
+            $row['updated_at_ts'] = $timestamp;
+        }
+
+        return $row;
+    }
+
     private function normalizeTableName(string $tableName): string
     {
         $tableName = strtolower(trim($tableName));
@@ -538,6 +601,7 @@ class CsvDTTableService
             if ($recreateIfExists) {
                 DB::connection($connection)->statement('DROP TABLE IF EXISTS "' . $schemaName . '"."' . $tableName . '"');
             } else {
+                $this->ensureManagedTimestampColumns($connection, $schemaName, $tableName);
                 return true;
             }
         }
@@ -565,7 +629,9 @@ class CsvDTTableService
             'json', 'uuid',
         ];
 
-        Schema::connection($connection)->create($qualifiedTable, function (Blueprint $table) use ($columns, $typeInfoByLaravelType, $safeBlueprintTypes) {
+        $reservedColumnNames = $this->getReservedColumnNames();
+
+        Schema::connection($connection)->create($qualifiedTable, function (Blueprint $table) use ($columns, $typeInfoByLaravelType, $safeBlueprintTypes, $reservedColumnNames) {
             $table->id();
 
             foreach ($columns as $col) {
@@ -577,8 +643,8 @@ class CsvDTTableService
                 if ($dbColumn === '') {
                     continue;
                 }
-                if ($dbColumn === 'id') {
-                    continue;
+                if (in_array($dbColumn, $reservedColumnNames, true)) {
+                    throw new InvalidArgumentException('Column name is reserved: ' . $dbColumn);
                 }
                 if (strlen($dbColumn) > 55) {
                     throw new InvalidArgumentException('Invalid column length > 55: ' . $dbColumn);
@@ -630,6 +696,9 @@ class CsvDTTableService
                     $table->text($dbColumn)->nullable();
                 }
             }
+
+            $table->timestamp('created_at_ts')->nullable();
+            $table->timestamp('updated_at_ts')->nullable();
         });
 
         return true;
@@ -702,6 +771,8 @@ class CsvDTTableService
             throw new InvalidArgumentException('Unable to inspect target table columns: ' . $qualifiedTable);
         }
 
+        $managedTimestampColumns = array_values(array_intersect($this->getManagedTimestampColumns(), array_keys($columnMetadata)));
+
         $requiredColumns = array_keys(array_filter($columnMetadata, function (array $columnMeta) {
             return !$columnMeta['is_nullable'] && !$columnMeta['has_default'];
         }));
@@ -721,7 +792,7 @@ class CsvDTTableService
                 if ($columnName === null || !array_key_exists($columnName, $columnMetadata)) {
                     continue;
                 }
-                if ($columnName === 'id') {
+                if (in_array($columnName, $this->getReservedColumnNames(), true)) {
                     continue;
                 }
 
@@ -745,6 +816,7 @@ class CsvDTTableService
                 continue;
             }
 
+            $row = $this->withManagedTimestamps($row, $managedTimestampColumns);
             ksort($row);
             $signature = implode('|', array_keys($row));
             $rowsBySignature[$signature][] = $row;

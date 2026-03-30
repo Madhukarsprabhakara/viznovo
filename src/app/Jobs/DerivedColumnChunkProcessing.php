@@ -19,6 +19,7 @@ class DerivedColumnChunkProcessing implements ShouldQueue
      * Create a new job instance.
      */
     protected array $chunk;
+    protected string $previousCategories;
     protected string $schemaName;
     protected string $tableName;
     protected int $projectDataId;
@@ -27,7 +28,7 @@ class DerivedColumnChunkProcessing implements ShouldQueue
     protected int $index;
     protected int $totalChunks;
 
-    public function __construct(array $chunk, string $schemaName, string $tableName, int $projectDataId, ?int $userId, ?string $modelKey, int $index, int $totalChunks)
+    public function __construct(array $chunk, string $schemaName, string $tableName, int $projectDataId, ?int $userId, ?string $modelKey, int $index, int $totalChunks, string $previousCategories = '')
     {
         $this->chunk = $chunk;
         $this->schemaName = $schemaName;
@@ -37,6 +38,7 @@ class DerivedColumnChunkProcessing implements ShouldQueue
         $this->modelKey = $modelKey;
         $this->index = $index;
         $this->totalChunks = $totalChunks;
+        $this->previousCategories = $previousCategories;
     }
 
     /**
@@ -48,11 +50,11 @@ class DerivedColumnChunkProcessing implements ShouldQueue
         $jsonDataService = new JsonDataService();
         $derivedTableService = new DerivedTableService();
         $user = $this->userId ? User::find($this->userId) : null;
-
+        $previousChunkString= $this->previousCategories ? 'Here are the previous categories identified from the previous chunks analysis that you can use for reference: ' . $this->previousCategories : '';
         if ($this->modelKey == 'gpt-5') {
             $response = (new DerivedColumnChunkProcessor)->forUser($user)
                 ->prompt(
-                    'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk with chunk details:' . json_encode($this->chunk),
+                    'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk with chunk details:' . json_encode($this->chunk) . '\n\n' . $previousChunkString,
                     provider: [
                         'openai' => 'gpt-5.4',
                         'gemini' => 'gemini-3.1-pro-preview',
@@ -62,7 +64,7 @@ class DerivedColumnChunkProcessing implements ShouldQueue
         } else {
             $response = (new DerivedColumnChunkProcessor)->forUser($user)
                 ->prompt(
-                    'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk:' . json_encode($this->chunk['records']),
+                    'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk with chunk details:' . json_encode($this->chunk['records']). '\n\n' . $previousChunkString,
                     provider: [
                         'gemini' => 'gemini-3.1-pro-preview',
                         'openai' => 'gpt-5.4',

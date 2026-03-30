@@ -30,6 +30,35 @@ class QdaService
         return null;
     }
 
+    private function getLatestDerivedColumnValue(string $connection, string $qualifiedTable, string $derivedColumn, array $existingColumns): string
+    {
+        if (!in_array($derivedColumn, $existingColumns, true)) {
+            return '';
+        }
+
+        if (!in_array('updated_at_ts', $existingColumns, true)) {
+            return '';
+        }
+
+        $latestValue = DB::connection($connection)
+            ->table($qualifiedTable)
+            ->whereNotNull($derivedColumn)
+            ->where($derivedColumn, '!=', '')
+            ->orderByDesc('updated_at_ts')
+            ->orderByDesc('id')
+            ->value($derivedColumn);
+
+        if ($latestValue === null) {
+            return '';
+        }
+
+        if (is_scalar($latestValue)) {
+            return trim((string) $latestValue);
+        }
+
+        return '';
+    }
+
     public function createJobs(Project $project, array $openEndedResponseChunks, Report $report, ?string $modelKey = null, $user = null)
     {
         $firstChunkJobs = [];
@@ -189,6 +218,8 @@ class QdaService
                     continue;
                 }
 
+                $previousCategories = $this->getLatestDerivedColumnValue($connection, $qualifiedTable, $derivedDbColumn, $existingColumns);
+
                 $records = DB::connection($connection)
                     ->table($qualifiedTable)
                     ->select(['id', $sourceColumn])
@@ -220,7 +251,7 @@ class QdaService
                         'derived_db_column' => $derivedDbColumn,
                         'db_column' => $sourceColumn,
                         'records' => array_values($chunk),
-                    ], $schemaName, $tableName, (int) $projectData->id, $userId, $modelKey, $index + 1, $totalChunks);
+                    ], $schemaName, $tableName, (int) $projectData->id, $userId, $modelKey, $index + 1, $totalChunks, $previousCategories ?? '');
                 }
             }
         }
