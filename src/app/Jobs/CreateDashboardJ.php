@@ -91,7 +91,7 @@ class CreateDashboardJ implements ShouldQueue
         ];
 
         if ($this->modelKey == 'gpt-5') {
-            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating dashboard.');
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating report.');
             event(new ReportStatusUpdate(reportId: $this->reportId));
             $response = (new CreateDashboard)->forUser($user)
                 ->prompt(
@@ -103,7 +103,7 @@ class CreateDashboardJ implements ShouldQueue
                     timeout: 600,
                 );
         } else {
-            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating dashboard.');
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating report.');
             event(new ReportStatusUpdate(reportId: $this->reportId));
             $response = (new CreateDashboard)->forUser($user)
                 ->prompt(
@@ -136,12 +136,12 @@ class CreateDashboardJ implements ShouldQueue
 
         if ($report->result) {
             // log the status
-            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Dashboard created successfully.');
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Report created successfully.');
             event(new ReportStatusUpdate(reportId: $this->reportId));
             
         } else {
             event(new ReportStatusUpdate(reportId: $this->reportId));
-            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Failed to create dashboard: ' . ($decodeError ?? 'Unknown error'));
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Failed to create report: ' . ($decodeError ?? 'Unknown error'));
         }
     }
 }

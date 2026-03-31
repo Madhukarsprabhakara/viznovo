@@ -140,7 +140,7 @@ function saveReportWithoutAnalysis() {
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
         <label for="prompt" class="mb-2 font-semibold text-gray-700">
-          Edit prompt to analyze data and generate a dashboard
+          Edit prompt to reanalyze data and generate a report
         </label>
 
         <textarea id="prompt" v-model="prompt"
