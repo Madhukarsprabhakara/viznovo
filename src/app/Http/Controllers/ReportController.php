@@ -844,8 +844,8 @@ class ReportController extends Controller
             if ($truthValues['openEndedIncrementalExists']) {
                 // $chain[]= Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures();
             }
-            if (!empty($chain) || $onlyQdaExists) {
-                // $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key, $qda);
+            if ($onlyQdaExists) {
+                $chain[]= new CreateDashboardJ($request->user()->id, $prompt, $report->id, $project->id, $request->model_key, $qda);
                 DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
                 event(new ReportStatusUpdate(reportId: $report->id));
                 // \DB::table('report_logs')
