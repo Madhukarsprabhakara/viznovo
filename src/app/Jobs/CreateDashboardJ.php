@@ -2,18 +2,22 @@
 
 namespace App\Jobs;
 
+use App\Ai\Agents\CreateDashboard;
+use App\Events\ReportStatusUpdate;
+use App\Models\Project;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Models\Report;
 use App\Models\ReportLog;
 use App\Models\ReportLogOpenEnded;
+use App\Models\User;
 use App\Services\ProjectDataMetricsService;
 use App\Services\JsonDataService;
-use App\Ai\Agents\CreateDashboard;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
-use App\Events\ReportStatusUpdate;
+use Illuminate\Support\Facades\DB;
+use App\Services\ReportLogService;
 
 #[Timeout(660)]
 #[Tries(3)]
@@ -22,22 +26,24 @@ class CreateDashboardJ implements ShouldQueue
 {
     use Queueable;
 
-    protected $report;
-    protected $prompt;
-    protected $project;
-    protected $modelKey;
-    protected $user;
+    protected ?int $userId;
+    protected string $prompt;
+    protected int $reportId;
+    protected int $projectId;
+    protected ?string $modelKey;
+    protected mixed $qualitativeDataRaw;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($user, $prompt, Report $report, $project, $modelKey)
+    public function __construct(?int $userId, string $prompt, int $reportId, int $projectId, ?string $modelKey, mixed $qualitativeDataRaw = null)
     {
-        $this->report = $report;
+        $this->userId = $userId;
         $this->prompt = $prompt;
-        $this->project = $project;
+        $this->reportId = $reportId;
+        $this->projectId = $projectId;
         $this->modelKey = $modelKey;
-        $this->user = $user;
+        $this->qualitativeDataRaw = $qualitativeDataRaw;
     }
 
     /**
@@ -45,18 +51,26 @@ class CreateDashboardJ implements ShouldQueue
      */
     public function middleware(): array
     {
-        return [new WithoutOverlapping($this->report->id)->releaseAfter(30)->expireAfter(720)];
+        return [new WithoutOverlapping($this->reportId)->releaseAfter(30)->expireAfter(720)];
     }
     public function handle(): void
     {
-        //
+        $reportLogService = new ReportLogService();
+        $report = Report::find($this->reportId);
+        $project = Project::find($this->projectId);
+        $user = $this->userId !== null ? User::find($this->userId) : null;
+
+        if (!$report || !$project) {
+            return;
+        }
+
         $jsonDataService = new JsonDataService();
         $projectDataMetricsService = new ProjectDataMetricsService();
-        $pdf_website_content_insights = ReportLog::where('report_id', $this->report->id)
+        $pdf_website_content_insights = ReportLog::where('report_id', $report->id)
             ->where('agent', 'ManualModeQualitativeDataInsights')
             ->first()?->response;
         $open_ended_response_insights = ReportLogOpenEnded::query()
-            ->where('report_id', $this->report->id)
+            ->where('report_id', $report->id)
             ->whereIn('agent', [
                 'ManualModeQualitativeCsvDataInsights',
                 'ManualModeQualitativeCsvDataInsightsIncrement',
@@ -71,15 +85,17 @@ class CreateDashboardJ implements ShouldQueue
         $qdaInsightsDecoded['qualitative_insights'][] = $qdaOpoenEndedInsights['qualitative_insights'] ?? null;
         $data_for_prompt_design = [
             // 'analysis_plan' => $analysisPlanArray['analysis_plan'] ?? null,
-
-            'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($this->report->id),
+            'qualitative_data_raw' => $this->qualitativeDataRaw,
+            'metrics_insights' => $projectDataMetricsService->getDataForPromptDesign($report->id),
             'qualitative_data_insights' => $qdaInsightsDecoded['qualitative_insights'] ?? null,
         ];
 
         if ($this->modelKey == 'gpt-5') {
-            $response = (new CreateDashboard)->forUser($this->user)
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating dashboard.');
+            event(new ReportStatusUpdate(reportId: $this->reportId));
+            $response = (new CreateDashboard)->forUser($user)
                 ->prompt(
-                    'Here are the instructions...\n\n' . $this->prompt . ' and the insights:' . json_encode($data_for_prompt_design),
+                    'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
                     provider: [
                         'openai' => 'gpt-5.2',
                         'gemini' => 'gemini-3.1-pro-preview',
@@ -87,9 +103,11 @@ class CreateDashboardJ implements ShouldQueue
                     timeout: 600,
                 );
         } else {
-            $response = (new CreateDashboard)->forUser($this->user)
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating dashboard.');
+            event(new ReportStatusUpdate(reportId: $this->reportId));
+            $response = (new CreateDashboard)->forUser($user)
                 ->prompt(
-                    'Here are the instructions...\n\n' . $this->prompt . ' and the insights:' . json_encode($data_for_prompt_design),
+                    'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
                     provider: [
                         'gemini' => 'gemini-3.1-pro-preview',
                         'openai' => 'gpt-5.2',
@@ -104,34 +122,26 @@ class CreateDashboardJ implements ShouldQueue
         $promptResponse = $jsonDataService->extractPromptResponse($decoded, $rawResponseText);
 
         $endEpoch = now()->timestamp;
-        $startEpoch = $this->report->start_epoch;
+        $startEpoch = $report->start_epoch;
 
         $timeTakenSeconds = is_null($startEpoch)
             ? null
             : max(0, $endEpoch - (int) $startEpoch);
 
-        $this->report->update([
+        $report->update([
             'result' => $promptResponse,
             'end_epoch' => $endEpoch,
             'time_taken_seconds' => $timeTakenSeconds,
         ]);
 
-        if ($this->report->result) {
+        if ($report->result) {
             // log the status
-            event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
-                ->updateOrInsert(
-                    ['report_id' => $this->report->id, 'agent' => 'CreateDashboard'],
-                    ['response' => json_encode($promptResponse), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Dashboard created successfully.']
-                );
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Dashboard created successfully.');
+            event(new ReportStatusUpdate(reportId: $this->reportId));
             
         } else {
-                event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
-                ->updateOrInsert(
-                    ['report_id' => $this->report->id, 'agent' => 'CreateDashboard'],
-                    ['response' => null, 'error' => 'No dashboard found for the report.', 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Could not create the dashboard for the provided data.']
-                );
+            event(new ReportStatusUpdate(reportId: $this->reportId));
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Failed to create dashboard: ' . ($decodeError ?? 'Unknown error'));
         }
     }
 }

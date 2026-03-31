@@ -65,5 +65,55 @@ class CsvDataTypeSeeder extends Seeder
                 'updated_at' => Carbon::now(),
             ]
         );
+        CsvDataType::updateOrInsert(
+            ['csv_type_key' => 'calculated-column-text-categorical'],
+            [
+                'csv_type_key' => 'calculated-column-text-categorical',
+                'db_type' => 'TEXT',
+                'laravel_type' => 'longText',
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
+        CsvDataType::updateOrInsert(
+            ['csv_type_key' => 'calculated-column-text-open-ended'],
+            [
+                'csv_type_key' => 'calculated-column-text-open-ended',
+                'db_type' => 'TEXT',
+                'laravel_type' => 'longText',
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
+        CsvDataType::updateOrInsert(
+            ['csv_type_key' => 'calculated-column-timestamp'],
+            [
+                'csv_type_key' => 'calculated-column-timestamp',
+                'db_type' => 'TIMESTAMP',
+                'laravel_type' => 'timestamp',
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
+        CsvDataType::updateOrInsert(
+            ['csv_type_key' => 'calculated-column-date'],
+            [
+                'csv_type_key' => 'calculated-column-date',
+                'db_type' => 'DATE',
+                'laravel_type' => 'date',
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
+        CsvDataType::updateOrInsert(
+            ['csv_type_key' => 'calculated-column-numeric'],
+            [
+                'csv_type_key' => 'calculated-column-numeric',
+                'db_type' => 'DOUBLE',
+                'laravel_type' => 'double',
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
     }
 }

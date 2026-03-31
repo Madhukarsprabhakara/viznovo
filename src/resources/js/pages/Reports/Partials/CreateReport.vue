@@ -56,14 +56,21 @@
       </div>
 
       <div class="w-full bg-white p-4 border-t flex gap-2 z-10 mt-4">
-        <!-- <button
-          class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
-          @click="testRun"
-          :disabled="loading || !canTestRun"
+        <input
+          v-model="reportName"
+          type="text"
+          placeholder="Name your report"
+          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
+        />
+
+        <button
+          class="ml-3 inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-transparent bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-400 hover:via-indigo-500 hover:to-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-none disabled:bg-gray-100 disabled:from-gray-100 disabled:via-gray-100 disabled:to-gray-100 disabled:text-gray-500 disabled:shadow-none disabled:hover:from-gray-100 disabled:hover:via-gray-100 disabled:hover:to-gray-100"
+          @click="saveReport"
+          :disabled="loading || !canPerformFullAnalysis"
         >
           <svg
             v-if="loading"
-            class="animate-spin h-5 w-5 mr-2 text-white"
+            class="mr-2 inline h-5 w-5 animate-spin text-white"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -73,65 +80,19 @@
           </svg>
 
           <span v-if="loading">Processing...</span>
-          <span v-else>Test Run</span>
-         
-        </button> -->
-        
-        <button
-          class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition"
-          @click="clearPrompt"
-        >
-          Clear Instructions
+          <span v-else>Analyze</span>
         </button>
-        
       </div>
-       <p class="text-xs text-gray-500 ml-1"></p>
+      <p class="ml-1 text-xs text-gray-500">Runs in the background on entire dataset.</p>
     </div>
 
     <!-- Report Preview Column -->
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
-        <label class="mb-2 font-semibold text-gray-700">Dashboard Preview</label>
+        <label class="mb-2 font-semibold text-gray-700">Report preview</label>
         <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]" v-html="reportHtml" />
       </div>
 
-      <div class="w-full bg-white p-4 border-t flex items-center gap-2 z-10 mt-4">
-        <input
-          v-model="reportName"
-          type="text"
-          placeholder="Dashboard Name"
-          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none"
-        />
-
-         <button
-          class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          @click="saveReport"
-          :disabled="loading || !canTestRun"
-        >
-          <svg
-            v-if="loading"
-            class="animate-spin h-5 w-5 mr-2 text-white"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
-
-          <span v-if="loading">Processing...</span>
-          <span v-else>Perform Full Analysis</span>
-        </button>
-
-        <!-- <button
-          class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          :disabled="!reportHtml || !reportName"
-          @click="saveReport"
-        >
-          Start Analysis
-        </button> -->
-      </div>
-      <p class="text-xs text-gray-500 ml-1">Runs in the background on entire dataset.</p>
     </div>
   </div>
 </template>
@@ -168,8 +129,10 @@ const reportId = ref(null)
 const loading = ref(false)
 const errorMessage = ref('')
 
-const canTestRun = computed(() => {
-  return Boolean(String(prompt.value ?? '').trim()) && Boolean(String(reportName.value ?? '').trim())
+const canPerformFullAnalysis = computed(() => {
+  return [prompt.value, selectedModelKey.value, reportName.value].every((value) => {
+    return Boolean(String(value ?? '').trim())
+  })
 })
 
 function maybeAddContextWindowTip(message) {
@@ -202,13 +165,8 @@ function savePrompt() {
   localStorage.setItem(LOCAL_PROMPT_KEY(projectId), prompt.value)
 }
 
-function clearPrompt() {
-  prompt.value = ''
-  savePrompt()
-}
-
 async function testRun() {
-  if (loading.value || !canTestRun.value) return
+  if (loading.value || !canPerformFullAnalysis.value) return
 
   loading.value = true
   errorMessage.value = ''

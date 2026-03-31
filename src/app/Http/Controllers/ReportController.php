@@ -31,11 +31,15 @@ use App\Services\QdaService;
 use App\Jobs\ManualModeMetricsDiscoveryJ;
 use App\Jobs\ManualModeQualitativeDataInsightsJ;
 use App\Jobs\CreateDashboardJ;
+use App\Jobs\IdentifyMetricsAndDerivedTableColumns;
 use App\Services\DispatchJobsService;
 use Spatie\Browsershot\Browsershot;
 use App\Events\ReportStatusUpdate;
-
+use App\Jobs\DispatchDerivedTableJobs;
+use App\Ai\Agents\CompleteDataSetCreation;
+use App\Jobs\ExecuteDerivedMetrics;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -659,6 +663,7 @@ class ReportController extends Controller
                     'prompt' => $request->prompt,
                     'model_key' => $request->model_key,
                     'is_automatic' => false,
+                    'start_epoch' => now()->timestamp,
                 ]);
             }
 
@@ -721,10 +726,12 @@ class ReportController extends Controller
                         $pgsqlContentArr['user_id'] = $file->user_id;
                         $pgsqlContentArr['schema_name'] = $project->schema_name;
                         $pgsqlContentArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlContentArr['derived_table_name'] = $file->csv_derived_table_name;
                         $pgsqlContentArr['table_schema'] = $file->projectDataCsvs;
                         $pgsqlContentArr['records'] = $csvDTTableService->getDataTypeTableRecords($project->schema_name, $file->csv_data_type_table_name);
                         $pgsqlOpenEndedArr['schema_name'] = $project->schema_name;
                         $pgsqlOpenEndedArr['table_name'] = $file->csv_data_type_table_name;
+                        $pgsqlOpenEndedArr['derived_table_name'] = $file->csv_derived_table_name;
                         // $pgsqlOpenEndedArr['open_ended_responses'] = $csvDTTableService->getRecordsFromOpenEndedColumns($project);
                         $pgsqlFinalArr[] = $pgsqlContentArr;
                         // $pgsqlOpenEndedFinalArr[] = $pgsqlOpenEndedArr;
@@ -785,6 +792,9 @@ class ReportController extends Controller
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
             ];
+
+
+
             $qda = [
                 'pdf_content' => $pdfContentArr,
                 'website_urls' => $websiteContentArr,
@@ -792,8 +802,8 @@ class ReportController extends Controller
             ];
             // return $csvDTTableService->getRecordsFromOpenEndedColumns($project);
             $qdaJobs = $qdaService->createJobs($project, $csvDTTableService->getRecordsFromOpenEndedColumns($project), $report, $request->model_key, $request->user());
-
-            $jsonQda = json_encode($qda);
+            //$derivedChunkJobs=$qdaService->createDerivedColumnJobs($project, $request->model_key, $request->user());
+            // $jsonQd = json_encode($qda);
             // return $qdaJobs;
             //$jsonData = json_encode($input_data);
             $jsonMetricData = json_encode($input_metric_data);
@@ -801,6 +811,7 @@ class ReportController extends Controller
 
             $prompt = $request->input('prompt');
             $analysisPlanString = $prompt;
+
 
             //check for csv existence
             //check for pdf existence
@@ -811,39 +822,44 @@ class ReportController extends Controller
             $truthValues = $decideAndDispatch->decideAndDispatch($input_metric_data, $qda, $qdaJobs);
             $chain = [];
             $qdaExists = $truthValues['pdfExists'] || $truthValues['websiteContentExists'];
-            if ($truthValues['pgsqlTableExists'] || $qdaExists) {
+            $onlyQdaExists = $qdaExists && !$truthValues['pgsqlTableExists'] && !$truthValues['openEndedFirstChunkExists'] && !$truthValues['openEndedIncrementalExists'];
+
+            if ($truthValues['pgsqlTableExists']) {
                 $batchJobs = [];
                 if ($truthValues['pgsqlTableExists']) {
-                    $batchJobs[] = new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key);
+                    // $batchJobs[] = new ManualModeMetricsDiscoveryJ($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key, $qda);
+                    $chain[] = new IdentifyMetricsAndDerivedTableColumns($request->user(), $analysisPlanString,  $jsonMetricData, $report, $project, $request->model_key);
+                    $chain[] = new DispatchDerivedTableJobs((int) $project->id, $userId, $request->model_key, $report->id, $prompt, $qda);
                 }
-                if ($qdaExists) {
-                    $batchJobs[] = new ManualModeQualitativeDataInsightsJ($request->user(), $jsonQda, $report, $project, $request->model_key);
-                }
+
                 // Only add the batch if we actually have jobs
                 if (!empty($batchJobs)) {
-                    $chain[] = Bus::batch($batchJobs)->allowFailures();
+                    // $chain[] = Bus::batch($derivedChunkJobs)->allowFailures();
+                    // $chain[] = Bus::batch($batchJobsDerived)->allowFailures();
                 }
             }
             if ($truthValues['openEndedFirstChunkExists']) {
-                $chain[]= Bus::batch($qdaJobs['first_chunk_jobs'] ?? [])->allowFailures();
+                // $chain[]= Bus::batch($qdaJobs['first_chunk_jobs'] ?? [])->allowFailures();
             }
             if ($truthValues['openEndedIncrementalExists']) {
-                $chain[]= Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures();
+                // $chain[]= Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures();
             }
-            if (!empty($chain)) {
-                $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key);
-                \DB::table('report_logs')
-                ->updateOrInsert(
-                    ['report_id' => $report->id, 'agent' => 'CreateDashboard'],
-                    ['response' => null, 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'You can relax and have coffee! Agents have started analyzing the data. You will receive an email with the dashboard link once it is ready.' ]
-                );
+            if (!empty($chain) || $onlyQdaExists) {
+                // $chain[]= new CreateDashboardJ($request->user(), $prompt, $report, $project, $request->model_key, $qda);
+                DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
                 event(new ReportStatusUpdate(reportId: $report->id));
+                // \DB::table('report_logs')
+                // ->updateOrInsert(
+                //     ['report_id' => $report->id, 'agent' => 'CreateDashboard'],
+                //     ['response' => null, 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'You can relax and have coffee! Agents have started analyzing the data. You will receive an email with the dashboard link once it is ready.' ]
+                // );
+                // event(new ReportStatusUpdate(reportId: $report->id));
 
                 Bus::chain($chain)->dispatch();
             }
-           
+
             $idb = null;
-            
+
             // if ($truthValues['pgsqlTableExists'] && $truthValues['pdfExists'] && $truthValues['websiteContentExists'] && $truthValues['openEndedFirstChunkExists'] && $truthValues['openEndedIncrementalExists']) {
             //     Bus::chain([
 

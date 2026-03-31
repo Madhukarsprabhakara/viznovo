@@ -12,7 +12,12 @@
      <div
       v-for="project in projects.projects"
       :key="project.id"
-      class="relative block rounded-xl bg-white shadow hover:shadow-lg transition p-6 border border-gray-200 hover:border-blue-400"
+      class="relative block rounded-xl bg-white shadow hover:shadow-lg transition p-6 border border-gray-200 hover:border-blue-400 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
+      role="link"
+      tabindex="0"
+      @click="openProject(project.id)"
+      @keydown.enter.prevent="openProject(project.id)"
+      @keydown.space.prevent="openProject(project.id)"
     >
       
         <Project :project="project" /> 
@@ -23,7 +28,7 @@
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import Project from './Project.vue'
 const projects = defineProps({
   projects: {
@@ -31,4 +36,8 @@ const projects = defineProps({
     required: true,
   },
 })
+
+function openProject(projectId) {
+  router.visit(`/projects/${projectId}`)
+}
 </script>

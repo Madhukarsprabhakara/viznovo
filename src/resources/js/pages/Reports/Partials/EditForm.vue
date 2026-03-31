@@ -33,6 +33,23 @@ const saveGeneratedReport = useForm({
   model_key: '' // optional: include if you persist it on update
 })
 
+const hasReportName = computed(() => Boolean(String(title.value ?? '').trim()))
+const hasPromptInstructions = computed(() => Boolean(String(prompt.value ?? '').trim()))
+const hasSelectedModel = computed(() => Boolean(String(selectedModelKey.value ?? '').trim()))
+const hasReportPreview = computed(() => Boolean(String(reportHtml.value ?? '').trim()))
+
+const hasRequiredReportInputs = computed(() => {
+  return hasReportName.value && hasPromptInstructions.value && hasSelectedModel.value
+})
+
+const canReanalyzeAndSave = computed(() => {
+  return hasRequiredReportInputs.value
+})
+
+const canSaveWithoutAnalysis = computed(() => {
+  return hasRequiredReportInputs.value && hasReportPreview.value
+})
+
 const reportLogs = computed(() => {
   return Array.isArray(report?.report_logs) ? report.report_logs : []
 })
@@ -78,12 +95,10 @@ watch(prompt, (val) => {
   localStorage.setItem(LOCAL_PROMPT_KEY(projectId, report.id), val)
 })
 
-function clearPrompt() {
-  prompt.value = ''
-  localStorage.setItem(LOCAL_PROMPT_KEY(projectId, report.id), '')
-}
+async function reanalyzeAndSaveReport() {
+  if (loading.value || !canReanalyzeAndSave.value) return
 
-async function testRun() {
+  openNotification()
   loading.value = true
   errorMessage.value = ''
   try {
@@ -103,7 +118,9 @@ async function testRun() {
   }
 }
 
-function saveReport() {
+function saveReportWithoutAnalysis() {
+  if (loading.value || !canSaveWithoutAnalysis.value) return
+
   saveGeneratedReport.title = title.value
   saveGeneratedReport.prompt = prompt.value
   saveGeneratedReport.result = reportHtml.value
@@ -160,9 +177,12 @@ function saveReport() {
       </div>
 
       <div class="w-full bg-white p-4 flex gap-2 z-10 mt-4">
+        <input v-model="title" type="text" placeholder="Report Name"
+          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" />
+
         <button
-          class="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center"
-          @click="testRun" :disabled="loading || !title || !prompt">
+          class="ml-3 inline-flex flex-1 items-center justify-center gap-2 rounded-md border border-transparent bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-400 hover:via-indigo-500 hover:to-indigo-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-none disabled:bg-gray-100 disabled:from-gray-100 disabled:via-gray-100 disabled:to-gray-100 disabled:text-gray-500 disabled:shadow-none disabled:hover:from-gray-100 disabled:hover:via-gray-100 disabled:hover:to-gray-100"
+          @click="reanalyzeAndSaveReport" :disabled="loading || !canReanalyzeAndSave">
           <svg v-if="loading" class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg"
             fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
@@ -170,11 +190,12 @@ function saveReport() {
           </svg>
 
           <span v-if="loading">Processing...</span>
-          <span v-else>Rerun the report</span>
+          <span v-else>Reanalyze and save</span>
         </button>
 
-        <button class="flex-1 bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300 transition" @click="clearPrompt">
-          Clear
+        <button class="flex-1 rounded border border-transparent bg-emerald-400 py-2 text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-500 disabled:hover:bg-gray-100"
+          @click="saveReportWithoutAnalysis" :disabled="loading || !canSaveWithoutAnalysis">
+          Save name only
         </button>
       </div>
     </div>
@@ -183,7 +204,7 @@ function saveReport() {
     <div class="relative flex flex-col h-[80vh]">
       <div class="flex-1 flex flex-col min-h-0">
         <div class="mb-2 flex items-center gap-2">
-          <label class="font-semibold text-gray-700">Dashboard Preview</label>
+          <label class="font-semibold text-gray-700">Report preview</label>
           <button type="button"
             class="inline-flex items-center rounded-md p-1 text-yellow-600 hover:bg-yellow-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
             title="View report logs" aria-label="View report logs" @click="openNotification">
@@ -192,16 +213,6 @@ function saveReport() {
         </div>
         <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]"
           v-html="reportHtml" />
-      </div>
-
-      <div class="w-full bg-white p-4 border-t flex items-center gap-2 z-10 mt-4">
-        <input v-model="title" type="text" placeholder="Dashboard Name"
-          class="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none" />
-
-        <button class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-          :disabled="!reportHtml || !title" @click="saveReport">
-          Save Report
-        </button>
       </div>
     </div>
 

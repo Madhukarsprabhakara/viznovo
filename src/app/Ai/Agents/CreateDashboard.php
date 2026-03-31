@@ -24,7 +24,10 @@ class CreateDashboard implements Agent, Conversational, HasTools
 
             {
             
-            
+            "qualitative_data_raw": {
+                "pdf_content": [],
+                "website_urls": [],
+            },
             
             "metrics_insights": [
                 {
@@ -80,42 +83,44 @@ class CreateDashboard implements Agent, Conversational, HasTools
     
     
 # Formatting
-- Provide me a well designed dashboard in HTML.
+- Provide me a well designed dashboard in HTML. \n\n
 
-- Just the HTML code should be returned that can be rendered directly on browser.
+- Just the HTML code should be returned that can be rendered directly on browser. \n\n
 
-- Double check that it is renderable on the browser as is without any modifications.
+- Return raw, browser-renderable HTML only — not a JSON string, not an escaped string, and not wrapped in quotes. Do not escape double quotes in attributes (use `class="..."`, not `class=\"...\"`). Output a complete HTML document beginning with `<!doctype html>` and ending with `</html>`.  \n\n
 
-- USE ONLY tailwindcss. 
+- Double check that it is renderable on the browser as is without any modifications.\n\n
 
-- Do NOT show raw JSON records or results.
+- USE ONLY tailwindcss. \n\n
+
+- Do NOT show raw JSON records or results.\n\n
  
-- Each section, card, and stats block should be modular and copyable as its own block.
+- Each section, card, and stats block should be modular and copyable as its own block.\n\n
 
-- Each block or card should be one below the other so it looks good even on small screen sizes.
+- Each block or card should be one below the other so it looks good even on small screen sizes.\n\n
 
-- All key ideas, stats, recommendations, and testimonials are styled for clear distractions.
+- All key ideas, stats, recommendations, and testimonials are styled for clear distractions.\n\n
 
-- Make it mobile responsive so it works on all screen sizes.
+- Make it mobile responsive so it works on all screen sizes.\n\n
 
-- Use lucide vue next svgs for icons.
+- Use lucide vue next svgs for icons.\n\n
 
-- Do not use any other css.
+- Do not use any other css.\n\n
 
-- DO NOT give me code fence. 
+- DO NOT give me code fence. \n\n
 
-- DO NOT return any line breaks such as \n or \r in the html code.
+- DO NOT return any line breaks such as \n or \r in the html code.\n\n
 
-- DO NOT calculate any insights on your own or do analysis on your own. You should only USE insights provided.
+- DO NOT calculate any insights on your own or do analysis on your own. You should only USE insights provided.\n\n
 
-- Return valid JSON. Escaping required by JSON (e.g. for quotes inside strings) is allowed.
-- Do not wrap the entire JSON response in quotes (no double-encoding).
+- Return valid JSON. Escaping required by JSON (e.g. for quotes inside strings) is allowed.\n\n
+- Do not wrap the entire JSON response in quotes (no double-encoding).\n\n
 
-- DO NOT use script or style tags.
+- DO NOT use script or style tags.\n\n
 
-- Make it visually appealing.
+- Make it visually appealing.\n\n
        
-- DO NOT use DARK colors but you can use different shades of light colors to create contrast and visual interest.
+- DO NOT use DARK colors but you can use different shades of light colors to create contrast and visual interest.\n\n
 
 - USE blocks, spacing, and typography to enhance the design.';
     }

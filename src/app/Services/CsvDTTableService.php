@@ -13,6 +13,130 @@ class CsvDTTableService
 {
 
     /**
+     * @return array<int, string>
+     */
+    private function getManagedTimestampColumns(): array
+    {
+        return ['created_at_ts', 'updated_at_ts'];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getReservedColumnNames(): array
+    {
+        return array_merge(['id'], $this->getManagedTimestampColumns());
+    }
+
+    private function tableHasColumn(string $connection, string $schemaName, string $tableName, string $columnName): bool
+    {
+        return DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->where('column_name', $columnName)
+            ->exists();
+    }
+
+    private function ensureManagedTimestampColumns(string $connection, string $schemaName, string $tableName): void
+    {
+        $missingColumns = array_values(array_filter($this->getManagedTimestampColumns(), function (string $columnName) use ($connection, $schemaName, $tableName) {
+            return !$this->tableHasColumn($connection, $schemaName, $tableName, $columnName);
+        }));
+
+        if ($missingColumns === []) {
+            return;
+        }
+
+        Schema::connection($connection)->table($schemaName . '.' . $tableName, function (Blueprint $table) use ($missingColumns) {
+            foreach ($missingColumns as $columnName) {
+                $table->timestamp($columnName)->nullable();
+            }
+        });
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param array<int, string> $availableColumns
+     * @return array<string, mixed>
+     */
+    private function withManagedTimestamps(array $row, array $availableColumns): array
+    {
+        $timestamp = now();
+
+        if (in_array('created_at_ts', $availableColumns, true)) {
+            $row['created_at_ts'] = $timestamp;
+        }
+
+        if (in_array('updated_at_ts', $availableColumns, true)) {
+            $row['updated_at_ts'] = $timestamp;
+        }
+
+        return $row;
+    }
+
+    private function normalizeTableName(string $tableName): string
+    {
+        $tableName = strtolower(trim($tableName));
+        $tableName = preg_replace('/[^a-z0-9_]/', '_', $tableName) ?? '';
+        $tableName = preg_replace('/_+/', '_', $tableName) ?? '';
+        $tableName = trim($tableName, '_');
+
+        if ($tableName === '') {
+            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
+        }
+
+        $suffix = '';
+        if (preg_match('/(_project_data_id_\d+_d)$/', $tableName, $matches) === 1) {
+            $suffix = $matches[1];
+        } elseif (preg_match('/(_data_type_\d+)$/', $tableName, $matches) === 1) {
+            $suffix = $matches[1];
+        } elseif (preg_match('/(_text_\d+)$/', $tableName, $matches) === 1) {
+            $suffix = $matches[1];
+        }
+
+        if ($suffix !== '' && strlen($suffix) < 55) {
+            $base = substr($tableName, 0, -strlen($suffix));
+            $base = rtrim($base, '_');
+
+            if ($base === '') {
+                $base = 't';
+            }
+
+            if (preg_match('/^[0-9]/', $base) === 1) {
+                $base = 't_' . $base;
+            }
+
+            $maxBaseLength = 55 - strlen($suffix);
+            $base = substr($base, 0, $maxBaseLength);
+            $base = rtrim($base, '_');
+
+            if ($base === '') {
+                $base = 't';
+            }
+
+            $tableName = $base . $suffix;
+        } else {
+            if (preg_match('/^[0-9]/', $tableName) === 1) {
+                $tableName = 't_' . $tableName;
+            }
+
+            $tableName = substr($tableName, 0, 55);
+            $tableName = rtrim($tableName, '_');
+
+            if ($tableName === '') {
+                $tableName = 't';
+            }
+        }
+
+        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
+            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
+        }
+
+        return $tableName;
+    }
+
+    /**
      * JSON encoding in PHP will fail if the payload contains INF/-INF/NaN floats.
      * Normalize those values (and nested arrays) to be JSON-safe.
      *
@@ -456,17 +580,13 @@ class CsvDTTableService
             ->values()
             ->toArray();
     }
-    public function createCsvDataTypeTable(string $tableName, string $schemaName, array $columns)
+    public function createCsvDataTypeTable(string $tableName, string $schemaName, array $columns, bool $recreateIfExists = false)
     {
         $schemaName = strtolower(trim($schemaName));
-        $tableName = strtolower(trim($tableName));
+        $tableName = $this->normalizeTableName($tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $connection = DB::getDefaultConnection();
@@ -478,7 +598,12 @@ class CsvDTTableService
 
         $qualifiedTable = $schemaName . '.' . $tableName;
         if (Schema::connection($connection)->hasTable($qualifiedTable)) {
-            return true;
+            if ($recreateIfExists) {
+                DB::connection($connection)->statement('DROP TABLE IF EXISTS "' . $schemaName . '"."' . $tableName . '"');
+            } else {
+                $this->ensureManagedTimestampColumns($connection, $schemaName, $tableName);
+                return true;
+            }
         }
 
         $typeInfoByLaravelType = DB::table('csv_data_types')
@@ -504,7 +629,11 @@ class CsvDTTableService
             'json', 'uuid',
         ];
 
-        Schema::connection($connection)->create($qualifiedTable, function (Blueprint $table) use ($columns, $typeInfoByLaravelType, $safeBlueprintTypes) {
+        $reservedColumnNames = $this->getReservedColumnNames();
+
+        Schema::connection($connection)->create($qualifiedTable, function (Blueprint $table) use ($columns, $typeInfoByLaravelType, $safeBlueprintTypes, $reservedColumnNames) {
+            $table->id();
+
             foreach ($columns as $col) {
                 if (!is_array($col)) {
                     continue;
@@ -513,6 +642,9 @@ class CsvDTTableService
                 $dbColumn = strtolower(trim((string) ($col['db_column'] ?? '')));
                 if ($dbColumn === '') {
                     continue;
+                }
+                if (in_array($dbColumn, $reservedColumnNames, true)) {
+                    throw new InvalidArgumentException('Column name is reserved: ' . $dbColumn);
                 }
                 if (strlen($dbColumn) > 55) {
                     throw new InvalidArgumentException('Invalid column length > 55: ' . $dbColumn);
@@ -564,6 +696,9 @@ class CsvDTTableService
                     $table->text($dbColumn)->nullable();
                 }
             }
+
+            $table->timestamp('created_at_ts')->nullable();
+            $table->timestamp('updated_at_ts')->nullable();
         });
 
         return true;
@@ -571,14 +706,10 @@ class CsvDTTableService
     public function getRecords(string $schemaName, string $tableName): array
     {
         $schemaName = strtolower(trim($schemaName));
-        $tableName = strtolower(trim($tableName));
+        $tableName = $this->normalizeTableName($tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;
@@ -592,8 +723,20 @@ class CsvDTTableService
             throw new InvalidArgumentException('Target table does not exist: ' . $qualifiedTable);
         }
 
-        return DB::connection($connection)
-            ->table($qualifiedTable)
+        $hasIdColumn = DB::connection($connection)
+            ->table('information_schema.columns')
+            ->where('table_schema', $schemaName)
+            ->where('table_name', $tableName)
+            ->where('column_name', 'id')
+            ->exists();
+
+        $query = DB::connection($connection)->table($qualifiedTable);
+
+        if ($hasIdColumn) {
+            $query->orderBy('id');
+        }
+
+        return $query
             ->get()
             ->map(function ($item) {
                 return $this->normalizeRowForJson((array) $item);
@@ -603,14 +746,10 @@ class CsvDTTableService
     public function addRecordsToCsvDataTypeTable(string $schemaName, string $tableName, array $records)
     {
         $schemaName = strtolower(trim($schemaName));
-        $tableName = strtolower(trim($tableName));
+        $tableName = $this->normalizeTableName($tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         if (empty($records)) {
@@ -632,6 +771,8 @@ class CsvDTTableService
             throw new InvalidArgumentException('Unable to inspect target table columns: ' . $qualifiedTable);
         }
 
+        $managedTimestampColumns = array_values(array_intersect($this->getManagedTimestampColumns(), array_keys($columnMetadata)));
+
         $requiredColumns = array_keys(array_filter($columnMetadata, function (array $columnMeta) {
             return !$columnMeta['is_nullable'] && !$columnMeta['has_default'];
         }));
@@ -649,6 +790,9 @@ class CsvDTTableService
             foreach ($record as $rawColumn => $rawValue) {
                 $columnName = $this->normalizeColumnName($rawColumn);
                 if ($columnName === null || !array_key_exists($columnName, $columnMetadata)) {
+                    continue;
+                }
+                if (in_array($columnName, $this->getReservedColumnNames(), true)) {
                     continue;
                 }
 
@@ -672,6 +816,7 @@ class CsvDTTableService
                 continue;
             }
 
+            $row = $this->withManagedTimestamps($row, $managedTimestampColumns);
             ksort($row);
             $signature = implode('|', array_keys($row));
             $rowsBySignature[$signature][] = $row;
@@ -733,14 +878,10 @@ class CsvDTTableService
     public function getDataTypeTableRecords($schemaName, $tableName)
     {
         $schemaName = strtolower(trim((string) $schemaName));
-        $tableName = strtolower(trim((string) $tableName));
+        $tableName = $this->normalizeTableName((string) $tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;
@@ -790,14 +931,10 @@ class CsvDTTableService
     {
        
         $schemaName = strtolower(trim((string) $schemaName));
-        $tableName = strtolower(trim((string) $tableName));
+        $tableName = $this->normalizeTableName((string) $tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;
@@ -864,14 +1001,10 @@ class CsvDTTableService
     public function getOpenEndedResponsesForIncrementalAnalysis(ProjectData $projectData, $schemaName, $tableName): array
     {
         $schemaName = strtolower(trim((string) $schemaName));
-        $tableName = strtolower(trim((string) $tableName));
+        $tableName = $this->normalizeTableName((string) $tableName);
 
         if ($schemaName === '' || preg_match('/[^a-z0-9_]/', $schemaName) === 1 || strlen($schemaName) > 63) {
             throw new InvalidArgumentException('Invalid schema name: ' . $schemaName);
-        }
-
-        if (strlen($tableName) > 55 || preg_match('/^[0-9]/', $tableName) === 1 || preg_match('/[^a-z0-9_]/', $tableName) === 1) {
-            throw new InvalidArgumentException('Invalid table name: ' . $tableName);
         }
 
         $qualifiedTable = $schemaName . '.' . $tableName;

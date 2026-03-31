@@ -9,6 +9,20 @@ use League\Csv\Reader;
 
 class ValidCsvHeaders implements ValidationRule
 {
+    /**
+     * @return array<string, string>
+     */
+    private function getReservedHeaderAliases(): array
+    {
+        return [
+            'id' => 'id',
+            'created_at' => 'created_at_ts',
+            'created_at_ts' => 'created_at_ts',
+            'updated_at' => 'updated_at_ts',
+            'updated_at_ts' => 'updated_at_ts',
+        ];
+    }
+
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (!$value instanceof UploadedFile) {
@@ -44,9 +58,9 @@ class ValidCsvHeaders implements ValidationRule
             return;
         }
 
-        [$emptyHeaderColumns, $duplicateHeaders] = $this->analyzeHeaders($headers);
+        [$emptyHeaderColumns, $duplicateHeaders, $reservedHeaders] = $this->analyzeHeaders($headers);
 
-        if (count($emptyHeaderColumns) === 0 && count($duplicateHeaders) === 0) {
+        if (count($emptyHeaderColumns) === 0 && count($duplicateHeaders) === 0 && count($reservedHeaders) === 0) {
             return;
         }
 
@@ -58,6 +72,16 @@ class ValidCsvHeaders implements ValidationRule
 
         if (count($duplicateHeaders) > 0) {
             $issues[] = 'duplicate column names: ' . implode(', ', $duplicateHeaders);
+        }
+
+        if (count($reservedHeaders) > 0) {
+            $reservedHeaderMessages = [];
+
+            foreach ($reservedHeaders as $reservedHeader => $columns) {
+                $reservedHeaderMessages[] = '"' . $reservedHeader . '" at columns: ' . implode(', ', $columns);
+            }
+
+            $issues[] = 'reserved column names found: ' . implode(', ', $reservedHeaderMessages) . '. These headers are system-managed. Rename or remove them';
         }
 
         $fail('The ' . $attribute . ' has an invalid CSV header row (' . implode('; ', $issues) . ').');
@@ -115,6 +139,8 @@ class ValidCsvHeaders implements ValidationRule
     {
         $emptyHeaderColumns = [];
         $normalizedHeaders = [];
+        $reservedHeaders = [];
+        $reservedHeaderAliases = $this->getReservedHeaderAliases();
 
         foreach (array_values($headers) as $index => $header) {
             $cell = (string) $header;
@@ -125,15 +151,21 @@ class ValidCsvHeaders implements ValidationRule
 
             $cell = trim($cell);
             $normalized = $this->lower($cell);
+            $normalizedIdentifier = $this->normalizeHeaderIdentifier($cell);
 
             if ($normalized === '') {
                 $emptyHeaderColumns[] = $index + 1;
             }
 
+            $reservedHeader = $reservedHeaderAliases[$normalized] ?? $reservedHeaderAliases[$normalizedIdentifier] ?? null;
+            if ($reservedHeader !== null) {
+                $reservedHeaders[$reservedHeader][] = $index + 1;
+            }
+
             $normalizedHeaders[] = $normalized;
         }
 
-        return [$emptyHeaderColumns, $this->findDuplicates($normalizedHeaders)];
+        return [$emptyHeaderColumns, $this->findDuplicates($normalizedHeaders), $reservedHeaders];
     }
 
     private function stripUtf8Bom(string $value): string
@@ -152,6 +184,17 @@ class ValidCsvHeaders implements ValidationRule
         }
 
         return strtolower($value);
+    }
+
+    private function normalizeHeaderIdentifier(string $value): string
+    {
+        $value = trim($value);
+        $value = str_replace(' ', '_', $value);
+        $value = $this->lower($value);
+        $value = preg_replace('/[^a-z0-9_]/', '_', $value) ?? '';
+        $value = preg_replace('/_+/', '_', $value) ?? '';
+
+        return trim($value, '_');
     }
 
     private function findDuplicates(array $normalizedHeaders): array
