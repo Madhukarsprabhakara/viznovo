@@ -838,13 +838,7 @@ class ReportController extends Controller
                     // $chain[] = Bus::batch($batchJobsDerived)->allowFailures();
                 }
             }
-            if ($truthValues['openEndedFirstChunkExists']) {
-                // $chain[]= Bus::batch($qdaJobs['first_chunk_jobs'] ?? [])->allowFailures();
-            }
-            if ($truthValues['openEndedIncrementalExists']) {
-                // $chain[]= Bus::batch($qdaJobs['remaining_chunk_jobs'] ?? [])->allowFailures();
-            }
-            if ($onlyQdaExists) {
+            if ($onlyQdaExists && !$truthValues['pgsqlTableExists']) {
                 $chain[]= new CreateDashboardJ($request->user()->id, $prompt, $report->id, $project->id, $request->model_key, $qda);
                 DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
                 event(new ReportStatusUpdate(reportId: $report->id));
