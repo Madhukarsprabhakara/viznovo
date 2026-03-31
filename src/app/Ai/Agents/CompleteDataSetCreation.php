@@ -201,6 +201,8 @@ class CompleteDataSetCreation implements Agent, Conversational, HasTools
 
         Assume the SQL engine doesn’t allow referencing a SELECT-list alias within another expression in the same query block. \n\n
         
+        If a query includes more than one table, never use bare column names. Prefix all columns with their table alias everywhere in the query, including inside functions like corr(), casts, filters, and join conditions. Assume overlapping column names may exist across joined tables, and generate SQL defensively to prevent ambiguity errors.\n\n
+
         Fix by either (a) repeating the full expression instead of the alias, or (b) wrapping the query in a subquery/CTE that computes the alias, then reference the alias in an outer query for ordering/filtering/grouping. \n\n
 
         When using UNION ALL ensure that the from clause si consistent and has a schema and table specified like from public.table. \n\n
