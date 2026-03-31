@@ -6,6 +6,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Services\ProjectDataMetricsService;
 use App\Services\ReportService;
+use App\Services\ReportLogService;
+use App\Events\ReportStatusUpdate;
 class ExecuteDerivedMetrics implements ShouldQueue
 {
     use Queueable;
@@ -25,10 +27,13 @@ class ExecuteDerivedMetrics implements ShouldQueue
     public function handle(): void
     {
         //
+        $reportLogService = new ReportLogService();
         $projectDataMetricsService = new ProjectDataMetricsService();
         $reportService = new ReportService();
         $metrics = $reportService->getMetricsForReport($reportService->getReportById($this->report_id));
         $projectDataMetricsService->updateMetricResult($metrics);
+        $reportLogService->storeReportLogs($this->report_id, 'ExecuteDerivedMetrics', 'Calculating metrics needed for analysis.');
+        event(new ReportStatusUpdate(reportId: $this->report_id));
 
     }
 }

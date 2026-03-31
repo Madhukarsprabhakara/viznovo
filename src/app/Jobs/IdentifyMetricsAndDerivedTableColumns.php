@@ -11,6 +11,9 @@ use App\Services\DerivedTableService;
 use App\Services\JsonDataService;
 use App\Services\ProjectDataMetricsService;
 use App\Services\ProjectDataService;
+use App\Services\ReportLogService;
+use App\Events\ReportStatusUpdate;
+
 class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
 {
     use Queueable, Batchable;
@@ -25,7 +28,7 @@ class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
     protected $reportId;
     protected $project;
     protected $modelKey;
-   
+
     public function __construct($user, $analysisPlanString, $jsonMetricData, $report, $project, $modelKey)
     {
         //
@@ -36,7 +39,6 @@ class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
         $this->reportId = is_object($report) ? ($report->id ?? null) : $report;
         $this->project = $project;
         $this->modelKey = $modelKey;
-       
     }
 
     /**
@@ -45,21 +47,24 @@ class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
     public function handle(): void
     {
         //get the derived table columns and metrics
+        $reportLogService = new ReportLogService();
         $jsonDataService = new JsonDataService();
         $projectDataMetricsService = new ProjectDataMetricsService();
         $projectDataService = new ProjectDataService();
         $derivedTableService = new DerivedTableService();
+        $reportLogService->storeReportLogs($this->reportId, 'IdentifyMetricsAndDerivedTableColumns', 'Creating additional columns and tables as needed to analyze the data.');
+        event(new ReportStatusUpdate(reportId: $this->reportId));
         $intermediate_tables = (new CompleteDataSetCreation)->forUser($this->user)
-                ->prompt(
-                    'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData .'\n\n',
-                    provider: [
-                        'openai' => 'gpt-5.4',
-                        'gemini' => 'gemini-3.1-pro-preview',
-                    ],
-                    timeout: 600,
-                );
+            ->prompt(
+                'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData . '\n\n',
+                provider: [
+                    'openai' => 'gpt-5.4',
+                    'gemini' => 'gemini-3.1-pro-preview',
+                ],
+                timeout: 600,
+            );
         $rawResponseText = (string) $intermediate_tables;
-       
+
         [$decoded, $decodeError] = $jsonDataService->decodeAiJson($rawResponseText);
 
         if (! is_array($decoded)) {
@@ -68,10 +73,10 @@ class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
 
         $decoded['project_id'] = $this->project->id ?? ($decoded['project_id'] ?? null);
         $decoded['user_id'] = $this->user->id;
-        
-        $storedMetrics=$projectDataMetricsService->store($decoded, $this->user->id, $this->reportId);
-        $storedDerivedColumns=$derivedTableService->storeDerivedColumns($decoded['intermediate_tables'] ?? [], $this->user->id, $this->reportId);
-        $storedTableName=$projectDataService->storeDerivedTableName($decoded['intermediate_tables'] ?? []);
+
+        $storedMetrics = $projectDataMetricsService->store($decoded, $this->user->id, $this->reportId);
+        $storedDerivedColumns = $derivedTableService->storeDerivedColumns($decoded['intermediate_tables'] ?? [], $this->user->id, $this->reportId);
+        $storedTableName = $projectDataService->storeDerivedTableName($decoded['intermediate_tables'] ?? []);
         // if ($projectDataMetricsService->checkMetricsExistForReport($this->report->id)) {
         //     // log the status
         //     event(new ReportStatusUpdate(reportId: $this->report->id));
@@ -80,7 +85,7 @@ class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
         //             ['report_id' => $this->report->id, 'agent' => 'ManualModeMetricsDiscovery'],
         //             ['response' => json_encode($metricSqls), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Metrics discovered successfully.']
         //         );
-            
+
         // } else {
         //     event(new ReportStatusUpdate(reportId: $this->report->id));
         //     \DB::table('report_logs')

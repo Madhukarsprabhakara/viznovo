@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Services\JsonDataService;
 use App\Services\DerivedTableService;
 use Illuminate\Support\Facades\Log;
+// use App\Services\ReportLogService;
+// use App\Events\ReportStatusUpdate;
 
 class DerivedColumnChunkProcessing implements ShouldQueue
 {
@@ -47,10 +49,11 @@ class DerivedColumnChunkProcessing implements ShouldQueue
     public function handle(): void
     {
         //
+        // $reportLogService = new ReportLogService();
         $jsonDataService = new JsonDataService();
         $derivedTableService = new DerivedTableService();
         $user = $this->userId ? User::find($this->userId) : null;
-        $previousChunkString= $this->previousCategories ? 'Here are the previous categories identified from the previous chunks analysis that you can use for reference: ' . $this->previousCategories : '';
+        $previousChunkString = $this->previousCategories ? 'Here are the previous categories identified from the previous chunks analysis that you can use for reference: ' . $this->previousCategories : '';
         if ($this->modelKey == 'gpt-5') {
             $response = (new DerivedColumnChunkProcessor)->forUser($user)
                 ->prompt(
@@ -64,7 +67,7 @@ class DerivedColumnChunkProcessing implements ShouldQueue
         } else {
             $response = (new DerivedColumnChunkProcessor)->forUser($user)
                 ->prompt(
-                    'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk with chunk details:' . json_encode($this->chunk['records']). '\n\n' . $previousChunkString,
+                    'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk with chunk details:' . json_encode($this->chunk['records']) . '\n\n' . $previousChunkString,
                     provider: [
                         'gemini' => 'gemini-3.1-pro-preview',
                         'openai' => 'gpt-5.4',
@@ -92,6 +95,7 @@ class DerivedColumnChunkProcessing implements ShouldQueue
 
         $updated = $derivedTableService->storeDerivedData($decoded, $this->schemaName, $this->tableName, $this->chunk);
 
+    
         Log::info('Derived column chunk processed.', [
             'updated_rows' => $updated,
             'decoded' => $decoded,

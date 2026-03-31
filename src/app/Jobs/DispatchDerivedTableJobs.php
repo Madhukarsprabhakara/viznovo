@@ -8,6 +8,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use App\Services\ReportLogService;
+use App\Events\ReportStatusUpdate;
 
 class DispatchDerivedTableJobs implements ShouldQueue
 {
@@ -20,8 +22,7 @@ class DispatchDerivedTableJobs implements ShouldQueue
         protected ?int $reportId = null,
         protected ?string $prompt = null,
         protected mixed $qualitativeDataRaw = null,
-    ) {
-    }
+    ) {}
 
     private function dispatchFollowUpJobs(): void
     {
@@ -48,7 +49,7 @@ class DispatchDerivedTableJobs implements ShouldQueue
     public function handle(DerivedTableService $derivedTableService): void
     {
         $project = Project::find($this->projectId);
-
+        $reportLogService = new ReportLogService();
         if (!$project) {
             Log::warning('Skipping derived table pipeline because the project no longer exists.', [
                 'project_id' => $this->projectId,
@@ -67,19 +68,24 @@ class DispatchDerivedTableJobs implements ShouldQueue
         );
 
         if ($jobs === []) {
-            Log::info('Skipping derived table pipeline because no derived tables were generated.', [
-                'project_id' => $this->projectId,
-            ]);
+            // Log::info('Skipping derived table pipeline because no derived tables were generated.', [
+            //     'project_id' => $this->projectId,
+            // ]);
+            $reportLogService->storeReportLogs($this->reportId, 'DerivedColumnBatch', 'No derived tables were generated, skipping pipeline.');
+            event(new ReportStatusUpdate(reportId: $this->reportId));
+
 
             $this->dispatchFollowUpJobs();
 
             return;
         }
 
-        Log::info('Dispatching derived table pipeline.', [
-            'project_id' => $this->projectId,
-            'job_count' => count($jobs),
-        ]);
+        $reportLogService->storeReportLogs($this->reportId, 'DerivedColumnBatch', 'Creating tables and calculated columns needed for analysis.');
+        event(new ReportStatusUpdate(reportId: $this->reportId));
+        // Log::info('Dispatching derived table pipeline.', [
+        //     'project_id' => $this->projectId,
+        //     'job_count' => count($jobs),
+        // ]);
 
         Bus::chain($jobs)->dispatch();
     }
