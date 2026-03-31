@@ -842,16 +842,15 @@ class ReportController extends Controller
                 $chain[]= new CreateDashboardJ($request->user()->id, $prompt, $report->id, $project->id, $request->model_key, $qda);
                 DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
                 event(new ReportStatusUpdate(reportId: $report->id));
-                // \DB::table('report_logs')
-                // ->updateOrInsert(
-                //     ['report_id' => $report->id, 'agent' => 'CreateDashboard'],
-                //     ['response' => null, 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'You can relax and have coffee! Agents have started analyzing the data. You will receive an email with the dashboard link once it is ready.' ]
-                // );
-                // event(new ReportStatusUpdate(reportId: $report->id));
 
                 Bus::chain($chain)->dispatch();
             }
-
+            if (!empty($chain) && !$onlyQdaExists) {
+                DB::table('report_logs')->where('report_id', '=', $report->id)->delete();
+                event(new ReportStatusUpdate(reportId: $report->id));
+                Bus::chain($chain)->dispatch();
+            }
+            
             $idb = null;
 
             // if ($truthValues['pgsqlTableExists'] && $truthValues['pdfExists'] && $truthValues['websiteContentExists'] && $truthValues['openEndedFirstChunkExists'] && $truthValues['openEndedIncrementalExists']) {
