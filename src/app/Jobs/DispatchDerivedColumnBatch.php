@@ -72,7 +72,7 @@ class DispatchDerivedColumnBatch implements ShouldQueue
             // Log::info('Skipping derived column batch because no jobs were generated.', [
             //     'project_id' => $this->projectId,
             // ]);
-            $reportLogService->storeReportLogs($reportId, 'DerivedColumnBatch', 'Started deriving insights from open-ended responses.');
+            $reportLogService->storeReportLogs($reportId, 'DerivedColumnBatch', 'Skipping deriving insights from open-ended responses because it was not likely needed.');
             event(new ReportStatusUpdate(reportId: $reportId));
 
             $this->dispatchFollowUpJobsWithContext();
