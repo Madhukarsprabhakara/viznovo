@@ -34,25 +34,21 @@
             <span v-else>Upload Files</span>
         </button>
         
-        <div v-if="form.errors.files" class="text-red-600 text-sm mt-2">
-            {{ form.errors.files }}
-        </div>
-        <div v-if="form.errors['files.0']" class="text-red-600 text-sm mt-1">
-            {{ form.errors['files.0'] }}
-        </div>
-        <div v-if="form.errors.error" class="text-red-600 text-sm mt-1">
-            {{ form.errors.error }}
+        <div v-for="error in uploadErrors" :key="error.key" class="text-red-600 text-sm mt-1">
+            {{ error.message }}
         </div>
     </form>
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, watch } from 'vue';
-import { useForm } from '@inertiajs/vue3'
+import { computed, ref, watch } from 'vue';
+import { useForm, usePage } from '@inertiajs/vue3'
 
 const props = defineProps<{
     project_id: number | string
 }>();
+
+const page = usePage();
 
 const files = ref<File[]>([]);
 const progress = ref<number | null>(null);
@@ -60,6 +56,17 @@ const progress = ref<number | null>(null);
 const form = useForm({
     project_id: props.project_id,
     files: [] as File[],
+});
+
+const uploadErrors = computed(() => {
+    const mergedErrors = {
+        ...((page.props.errors as Record<string, string | undefined>) ?? {}),
+        ...form.errors,
+    };
+
+    return Object.entries(mergedErrors)
+        .filter(([key, value]) => (key === 'files' || key.startsWith('files.') || key === 'error') && typeof value === 'string' && value.length > 0)
+        .map(([key, message]) => ({ key, message }));
 });
 
 // Watch files and update form.files
@@ -96,7 +103,9 @@ function submit() {
     form.post(`/projects/${props.project_id}/upload`, {
         forceFormData: true,
         onProgress: (e) => {
-            progress.value = e ? Math.round((e.loaded / e.total) * 100) : null;
+            progress.value = e && typeof e.total === 'number' && e.total > 0
+                ? Math.round((e.loaded / e.total) * 100)
+                : null;
         },
         onSuccess: () => {
             form.reset();
