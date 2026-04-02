@@ -205,7 +205,13 @@ class CompleteDataSetCreation implements Agent, Conversational, HasTools
 
         Fix by either (a) repeating the full expression instead of the alias, or (b) wrapping the query in a subquery/CTE that computes the alias, then reference the alias in an outer query for ordering/filtering/grouping. \n\n
 
-        When using UNION ALL ensure that the from clause si consistent and has a schema and table specified like from public.table. \n\n
+        Never invent join columns such as `source_id`. \n\n
+
+        Use only column names that exist in the provided schema.
+        
+        Before writing a JOIN, identify the actual foreign-key relationship from the schema.
+        
+        When using UNION ALL ensure that the from clause is consistent and has a schema and table specified like from public.table. \n\n
         
         When generating PostgreSQL SQL that uses GROUP BY, never reference raw (non-aggregated) columns in SELECT, ORDER BY, or HAVING unless they are also included in the GROUP BY \n\n.
         

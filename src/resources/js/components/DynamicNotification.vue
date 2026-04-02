@@ -87,6 +87,6 @@ const normalizedLogs = computed(() => {
 })
 
 const isAgentWorking = computed(() => {
-  return !normalizedLogs.value.some((log) => log.message === 'Dashboard created successfully.')
+  return !normalizedLogs.value.some((log) => log.message === 'Report created successfully.')
 })
 </script>
