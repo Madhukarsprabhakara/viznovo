@@ -97,7 +97,7 @@ class CreateDashboardJ implements ShouldQueue
                 ->prompt(
                     'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
                     provider: [
-                        'openai' => 'gpt-5.2',
+                        'openai' => 'gpt-5.4',
                         'gemini' => 'gemini-3.1-pro-preview',
                     ],
                     timeout: 600,
@@ -110,7 +110,7 @@ class CreateDashboardJ implements ShouldQueue
                     'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
                     provider: [
                         'gemini' => 'gemini-3.1-pro-preview',
-                        'openai' => 'gpt-5.2',
+                        'openai' => 'gpt-5.4',
 
                     ],
                     timeout: 600,
