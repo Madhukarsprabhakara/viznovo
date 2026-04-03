@@ -9,6 +9,7 @@ use App\Services\CsvTextTableService;
 use App\Services\ProjectService;
 use App\Services\JsonDataService;
 use App\Services\ProjectDataCsvService;
+use App\Services\UserAiProviderConfigService;
 use App\Models\Project;
 use App\Models\User;
 use App\Ai\Agents\DiscoverCSVColumnDataType;
@@ -36,6 +37,10 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
         $jsonDataService = new JsonDataService();
         $csvTextTableService = new CsvTextTableService();
         $projectService = new ProjectService();
+        $user = User::find($this->projectData->user_id);
+
+        app(UserAiProviderConfigService::class)->applyForUser($user?->id);
+
         $schemaName = $projectService->getProjectSchema(Project::find($this->projectData->project_id));
         $tableName = $this->projectData->csv_text_table_name;
 
@@ -57,11 +62,11 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
         // event(new CsvStatusUpdate(projectData: $this->projectData, project_data_id: $this->projectData->id));
     
 
-        $discovery = (new DiscoverCSVColumnDataType)->forUser(User::find($this->projectData->user_id))
+        $discovery = (new DiscoverCSVColumnDataType)->forUser($user)
             ->prompt(
                 'Here are sample 20 records from the CSV table:\n\n' . $recordsString,
                 provider: [
-                    'openai' => 'gpt-5.2',
+                    'openai' => 'gpt-5.4',
                     'gemini' => 'gemini-3-pro-preview',
                 ],
                 timeout: 600,
