@@ -20,6 +20,22 @@ powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((Invoke-Re
 
 The bootstrap script downloads the project ZIP, extracts it into a local app folder, and then runs the local installer.
 
+## Bootstrap uninstall without Git
+
+macOS bootstrap uninstall command:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Madhukarsprabhakara/viznovo/main/scripts/bootstrap-uninstall.sh)
+```
+
+Windows PowerShell bootstrap uninstall command:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "& ([scriptblock]::Create((Invoke-RestMethod 'https://raw.githubusercontent.com/Madhukarsprabhakara/viznovo/main/scripts/bootstrap-uninstall.ps1')))"
+```
+
+These commands stop the installer stack, remove the installer database volume, remove `src/.env.install`, and delete the downloaded app folder in the default bootstrap location.
+
 ## What it does
 
 - Checks whether Docker is installed.
@@ -47,6 +63,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-local.ps1
 
 These commands are for users who already have the project on disk.
 
+## Repository-based uninstall commands
+
+macOS:
+
+```bash
+bash scripts/uninstall-local.sh
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\uninstall-local.ps1
+```
+
+These commands remove the installer stack from an existing checkout but leave the repository folder in place.
+
 ## URLs
 
 - App: `http://localhost:8088/register`
@@ -67,3 +99,4 @@ These commands are for users who already have the project on disk.
 - Local installer mode bypasses email verification so first-time users can sign up immediately.
 - The existing development stack remains unchanged.
 - The bootstrap scripts default to the GitHub ZIP archive for `Madhukarsprabhakara/viznovo` on the `main` branch. If you change the default branch later, update the bootstrap URLs.
+- The uninstall scripts only target the install stack defined in `docker-compose.install.yml`; they do not remove or alter your existing development stack.
