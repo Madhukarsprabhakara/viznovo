@@ -10,6 +10,7 @@ pgadmin-data/*
 /src/boost.json
 /src/vendor
 /src/.env
+/src/.env.install
 /src/.env.backup
 /src/.env.production
 /src/.phpactor.json

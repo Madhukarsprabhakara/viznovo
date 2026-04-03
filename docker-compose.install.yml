@@ -1,0 +1,95 @@
+services:
+  irep_install_db:
+    image: postgres:14.12
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: irep_install
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${IREP_INSTALL_DB_PASSWORD:-irep_local_password}
+    ports:
+      - '5434:5432'
+    volumes:
+      - irep_install_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d irep_install']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  irep_install_php:
+    build:
+      context: .
+      dockerfile: php-dev.dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/html
+    depends_on:
+      irep_install_db:
+        condition: service_healthy
+    volumes:
+      - ./src:/var/www/html
+      - ./src/.env.install:/var/www/html/.env
+      - ./php/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini
+
+  irep_install_cli:
+    build:
+      context: .
+      dockerfile: php-dev.dockerfile
+    working_dir: /var/www/html
+    depends_on:
+      irep_install_db:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '-lc']
+    volumes:
+      - ./src:/var/www/html
+      - ./src/.env.install:/var/www/html/.env
+      - ./php/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini
+
+  irep_install_nginx:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    depends_on:
+      - irep_install_php
+    ports:
+      - '8088:80'
+    volumes:
+      - ./nginx/install.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./src/public:/var/www/html/public:ro
+
+  irep_install_reverb:
+    build:
+      context: .
+      dockerfile: php-dev.dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/html
+    depends_on:
+      irep_install_db:
+        condition: service_healthy
+      irep_install_php:
+        condition: service_started
+    entrypoint: ['php', 'artisan', 'reverb:start', '--host', '0.0.0.0', '--port', '8080']
+    ports:
+      - '8081:8080'
+    volumes:
+      - ./src:/var/www/html
+      - ./src/.env.install:/var/www/html/.env
+      - ./php/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini
+
+  irep_install_supervisord:
+    build:
+      context: .
+      dockerfile: supervisord.dockerfile
+    restart: unless-stopped
+    working_dir: /var/www/html
+    depends_on:
+      irep_install_db:
+        condition: service_healthy
+      irep_install_php:
+        condition: service_started
+      irep_install_reverb:
+        condition: service_started
+    volumes:
+      - ./src:/var/www/html
+      - ./src/.env.install:/var/www/html/.env
+
+volumes:
+  irep_install_db_data:
