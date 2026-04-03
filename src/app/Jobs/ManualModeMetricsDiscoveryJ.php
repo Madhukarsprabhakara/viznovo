@@ -8,8 +8,10 @@ use App\Models\User;
 use Illuminate\Bus\Batchable;
 use App\Services\JsonDataService;
 use App\Services\ProjectDataMetricsService;
+use App\Services\UserAiProviderConfigService;
 use App\Ai\Agents\ManualModeMetricsDiscovery;
 use App\Events\ReportStatusUpdate;
+use Illuminate\Support\Facades\DB;
 
 
 class ManualModeMetricsDiscoveryJ implements ShouldQueue
@@ -45,6 +47,7 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
     public function handle(): void
     {
         //
+        app(UserAiProviderConfigService::class)->applyForUser($this->user?->id);
 
         //$tableDataString = json_encode($input_data['pgsql_tables']);
         if ($this->qualitativeDataRaw) {
@@ -90,7 +93,7 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
         if ($projectDataMetricsService->checkMetricsExistForReport($this->report->id)) {
             // log the status
             event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
+            DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeMetricsDiscovery'],
                     ['response' => json_encode($metricSqls), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Metrics discovered successfully.']
@@ -98,7 +101,7 @@ class ManualModeMetricsDiscoveryJ implements ShouldQueue
             
         } else {
             event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
+            DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeMetricsDiscovery'],
                     ['response' => null, 'error' => 'No metrics found for the report.', 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Something went wrong with metrics discovery.']

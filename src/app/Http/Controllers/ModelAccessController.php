@@ -38,7 +38,7 @@ class ModelAccessController extends Controller
         $data = $request->validate([
             // send one or both from the form
            'model_key' => ['required', 'string', 'max:255'],
-            'token' => ['required', 'string', 'max:5000'],
+           'token' => ['required', 'string', 'max:5000'],
         ]);
 
         $userId = auth()->id();
