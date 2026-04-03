@@ -65,25 +65,78 @@ require_macos() {
     fi
 }
 
+ensure_docker() {
+    command -v docker >/dev/null 2>&1 || {
+        echo "Docker is required to remove the installer stack."
+        exit 1
+    }
+
+    docker info >/dev/null 2>&1 || {
+        echo "Docker is installed but not running. Start Docker Desktop and rerun this command."
+        exit 1
+    }
+}
+
+confirm() {
+    if (( YES == 1 )); then
+        return
+    fi
+
+    printf 'This will remove the local installer stack, database volume, and generated installer env file. Continue? [y/N] '
+    read -r reply
+
+    if [[ ! "$reply" =~ ^[Yy]$ ]]; then
+        echo "Uninstall cancelled."
+        exit 0
+    fi
+}
+
+fallback_uninstall() {
+    local app_root="$1"
+    local compose_file="$app_root/docker-compose.install.yml"
+    local env_file="$app_root/src/.env.install"
+    local down_args=(compose -p irep-install -f "$compose_file" down -v --remove-orphans)
+
+    (( PURGE_IMAGES == 1 )) && down_args+=(--rmi local)
+
+    ensure_docker
+    confirm
+
+    docker "${down_args[@]}"
+
+    if [[ -f "$env_file" ]]; then
+        rm -f "$env_file"
+    fi
+}
+
 main() {
     parse_args "$@"
     require_macos
 
     local app_root="$INSTALL_PARENT_DIR/$APP_DIR_NAME"
     local uninstall_script="$app_root/scripts/uninstall-local.sh"
+    local compose_file="$app_root/docker-compose.install.yml"
 
-    if [[ ! -f "$uninstall_script" ]]; then
+    if [[ ! -d "$app_root" ]]; then
         echo "Could not find an installed app at: $app_root"
         exit 1
     fi
 
-    cd "$app_root"
+    if [[ -f "$uninstall_script" ]]; then
+        cd "$app_root"
 
-    local args=()
-    (( PURGE_IMAGES == 1 )) && args+=(--purge-images)
-    (( YES == 1 )) && args+=(--yes)
+        local args=()
+        (( PURGE_IMAGES == 1 )) && args+=(--purge-images)
+        (( YES == 1 )) && args+=(--yes)
 
-    bash "$uninstall_script" "${args[@]}"
+        bash "$uninstall_script" "${args[@]}"
+    elif [[ -f "$compose_file" ]]; then
+        echo "Installed app does not contain the new uninstall helper script. Falling back to direct stack teardown."
+        fallback_uninstall "$app_root"
+    else
+        echo "Could not find uninstall metadata in: $app_root"
+        exit 1
+    fi
 
     if (( KEEP_APP_DIR == 0 )); then
         rm -rf "$app_root"
