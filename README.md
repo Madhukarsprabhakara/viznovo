@@ -45,7 +45,7 @@ These commands stop the installer stack, remove the installer database volume, r
 - Starts a separate installer-focused Docker stack.
 - Generates a dedicated `src/.env.install` file from `src/.env.install.example`.
 - Installs PHP and Node dependencies inside Docker.
-- Generates the Laravel app key, runs migrations, builds frontend assets, starts queue workers and Reverb, and opens the app in your browser.
+- Generates the Laravel app key, runs migrations, seeds AI model and CSV data type reference tables, builds frontend assets, starts queue workers and Reverb, and opens the app in your browser.
 
 ## Repository-based commands
 

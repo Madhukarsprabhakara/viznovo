@@ -128,6 +128,8 @@ main() {
     run_cli "npm ci"
     run_cli "php artisan key:generate --force"
     run_cli "php artisan migrate --force"
+    run_cli "php artisan db:seed --class=Database\\Seeders\\AIModelsSeeder --force"
+    run_cli "php artisan db:seed --class=Database\\Seeders\\CsvDataTypeSeeder --force"
     run_cli "php artisan storage:link || true"
     run_cli "php artisan config:clear && php artisan route:clear && php artisan view:clear"
     run_cli "npm run build"
