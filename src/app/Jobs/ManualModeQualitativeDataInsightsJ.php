@@ -8,8 +8,10 @@ use App\Models\User;
 use Illuminate\Bus\Batchable;
 use App\Ai\Agents\ManualModeQualitativeDataInsights;
 use App\Services\JsonDataService;
+use App\Services\UserAiProviderConfigService;
 use App\Events\ReportStatusUpdate;
 use App\Models\ReportLog;
+use Illuminate\Support\Facades\DB;
 
 class ManualModeQualitativeDataInsightsJ implements ShouldQueue
 {
@@ -40,6 +42,8 @@ class ManualModeQualitativeDataInsightsJ implements ShouldQueue
     public function handle(): void
     {
         //
+        app(UserAiProviderConfigService::class)->applyForUser($this->user?->id);
+
         $jsonDataService = new JsonDataService();
         if ($this->modelKey == 'gpt-5') {
             $qdaInsights = (new ManualModeQualitativeDataInsights)->forUser($this->user)
@@ -72,14 +76,14 @@ class ManualModeQualitativeDataInsightsJ implements ShouldQueue
         if ($qdaInsightsDecoded) {
             // log the status
              event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
+            DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeDataInsights'],
                     ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Qualitative insights generated successfully for pdfs and websites.']
                 );
         } else {
              event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
+            DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeDataInsights'],
                     ['response' => null, 'error' => 'No qualitative insights found for the report.', 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Something went wrong with qualitative insights generation.']

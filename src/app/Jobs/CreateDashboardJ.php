@@ -13,18 +13,18 @@ use App\Models\ReportLogOpenEnded;
 use App\Models\User;
 use App\Services\ProjectDataMetricsService;
 use App\Services\JsonDataService;
+use App\Services\UserAiProviderConfigService;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-use Illuminate\Queue\Attributes\Timeout;
-use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Support\Facades\DB;
 use App\Services\ReportLogService;
-
-#[Timeout(660)]
-#[Tries(3)]
 
 class CreateDashboardJ implements ShouldQueue
 {
     use Queueable;
+
+    public int $timeout = 660;
+
+    public int $tries = 3;
 
     protected ?int $userId;
     protected string $prompt;
@@ -59,6 +59,8 @@ class CreateDashboardJ implements ShouldQueue
         $report = Report::find($this->reportId);
         $project = Project::find($this->projectId);
         $user = $this->userId !== null ? User::find($this->userId) : null;
+
+        app(UserAiProviderConfigService::class)->applyForUser($user?->id);
 
         if (!$report || !$project) {
             return;

@@ -4,8 +4,10 @@ namespace App\Services;
 
 use Aws\BedrockRuntime\BedrockRuntimeClient;
 use Illuminate\Database\Eloquent\JsonEncodingException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use App\Services\KeyService;
+use Illuminate\Support\Facades\Log;
 use Laravel\Prompts\Key;
 use Illuminate\Support\Facades\Crypt;
 
@@ -178,7 +180,8 @@ class AIService
   {
     $keyService = new KeyService();
     // return Crypt::decryptString($keyService->getModelAccess('gemini-3-pro', auth()->id())->token);
-    $gemini_key = Crypt::decryptString($keyService->getModelAccess('gemini-3-pro', auth()->id())->token);
+    $gemini_key = Crypt::decryptString($keyService->getModelAccess('gemini-3-pro', Auth::id())->token);
+
     try {
       $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent';
 
@@ -211,20 +214,20 @@ class AIService
       $output = json_encode($response->json());
       $data['output'] = json_decode($output, true);
 
-      \Log::info('PromptResponse Raw:', ['promptResponse' => $data['output']]);
+      Log::info('PromptResponse Raw:', ['promptResponse' => $data['output']]);
       if (json_last_error() !== JSON_ERROR_NONE) {
-        \Log::info('JSON Error:', ['error' => json_last_error_msg()]);
+        Log::info('JSON Error:', ['error' => json_last_error_msg()]);
       }
 
       // Check if output key exists and is an array
       if (!isset($data['output']) || !is_array($data['output'])) {
-        \Log::info('JSON Error:', ['error' => 'Output key does not exist or is not an array']);
+        Log::info('JSON Error:', ['error' => 'Output key does not exist or is not an array']);
         exit;
       }
 
       // Check if output array is not empty and first element has prompt_response key
       if (empty($data['output']) || !isset($data['output']['candidates'][0]['content']['parts'][0]['text'])) {
-        \Log::info('JSON Error:', ['error' => 'Output array is empty or prompt_response key does not exist']);
+        Log::info('JSON Error:', ['error' => 'Output array is empty or prompt_response key does not exist']);
         exit;
       }
 
@@ -244,7 +247,7 @@ class AIService
   {
     try {
       $keyService = new KeyService();
-      $client = \OpenAI::client(Crypt::decryptString($keyService->getModelAccess('gpt-5', auth()->id())->token));
+      $client = \OpenAI::client(Crypt::decryptString($keyService->getModelAccess('gpt-5', Auth::id())->token));
 
       $result = $client->chat()->create([
         'model' => 'gpt-5',
@@ -263,20 +266,20 @@ class AIService
 
 
       $data['output'] = json_decode($output, true);
-      \Log::info('PromptResponse Raw:', ['promptResponse' => $data['output']]);
+      Log::info('PromptResponse Raw:', ['promptResponse' => $data['output']]);
       if (json_last_error() !== JSON_ERROR_NONE) {
-        \Log::info('JSON Error:', ['error' => json_last_error_msg()]);
+        Log::info('JSON Error:', ['error' => json_last_error_msg()]);
       }
 
       // Check if output key exists and is an array
       if (!isset($data['output']) || !is_array($data['output'])) {
-        \Log::info('JSON Error:', ['error' => 'Output key does not exist or is not an array']);
+        Log::info('JSON Error:', ['error' => 'Output key does not exist or is not an array']);
         exit;
       }
 
       // Check if output array is not empty and first element has prompt_response key
       if (empty($data['output']) || !isset($data['output'][0]['prompt_response'])) {
-        \Log::info('JSON Error:', ['error' => 'Output array is empty or prompt_response key does not exist']);
+        Log::info('JSON Error:', ['error' => 'Output array is empty or prompt_response key does not exist']);
         exit;
       }
 
@@ -285,7 +288,7 @@ class AIService
       // \Log::info('JSON Output:', ['prompt_response' => $promptResponse]); 
       if ($promptResponse) {
         // \Log::info('JSON Output:', ['success' => 'sending clean data']); 
-        \Log::info('PromptResponse slashes stripped:', ['promptResponse' => stripslashes($promptResponse)]);
+        Log::info('PromptResponse slashes stripped:', ['promptResponse' => stripslashes($promptResponse)]);
         // $data = str_replace(array("\r\n", "\n", "\r",'\\'), '', $promptResponse);
 
         // \Log::info('PromptResponse Raw:', ['slashes_stripped' => json_encode(stripslashes($data))]);
@@ -330,20 +333,20 @@ class AIService
 
 
       $data['output'] = json_decode($output, true);
-      \Log::info('PromptResponse Raw:', ['promptResponse' => $data['output']]);
+      Log::info('PromptResponse Raw:', ['promptResponse' => $data['output']]);
       if (json_last_error() !== JSON_ERROR_NONE) {
-        \Log::info('JSON Error:', ['error' => json_last_error_msg()]);
+        Log::info('JSON Error:', ['error' => json_last_error_msg()]);
       }
 
       // Check if output key exists and is an array
       if (!isset($data['output']) || !is_array($data['output'])) {
-        \Log::info('JSON Error:', ['error' => 'Output key does not exist or is not an array']);
+        Log::info('JSON Error:', ['error' => 'Output key does not exist or is not an array']);
         exit;
       }
 
       // Check if output array is not empty and first element has prompt_response key
       if (empty($data['output']) || !isset($data['output'][0]['prompt_response'])) {
-        \Log::info('JSON Error:', ['error' => 'Output array is empty or prompt_response key does not exist']);
+        Log::info('JSON Error:', ['error' => 'Output array is empty or prompt_response key does not exist']);
         exit;
       }
 
@@ -352,7 +355,7 @@ class AIService
       // \Log::info('JSON Output:', ['prompt_response' => $promptResponse]); 
       if ($promptResponse) {
         // \Log::info('JSON Output:', ['success' => 'sending clean data']); 
-        \Log::info('PromptResponse slashes stripped:', ['promptResponse' => stripslashes($promptResponse)]);
+        Log::info('PromptResponse slashes stripped:', ['promptResponse' => stripslashes($promptResponse)]);
         // $data = str_replace(array("\r\n", "\n", "\r",'\\'), '', $promptResponse);
 
         // \Log::info('PromptResponse Raw:', ['slashes_stripped' => json_encode(stripslashes($data))]);
@@ -377,7 +380,7 @@ class AIService
         'message' => 'Response generated successfully.',
         'data' =>  $e->getMessage(),
       ];
-      \Log::error('JSON Encoding Error:', ['error' => $e->getMessage()]);
+      Log::error('JSON Encoding Error:', ['error' => $e->getMessage()]);
       throw $e;
     }
   }

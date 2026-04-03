@@ -9,7 +9,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Ai\Agents\ManualModeQualitativeCsvDataInsights;
 use App\Services\JsonDataService;
+use App\Services\UserAiProviderConfigService;
 use App\Events\ReportStatusUpdate;
+use Illuminate\Support\Facades\DB;
 
 class QdaOpenResponsesFirstChunk implements ShouldQueue
 {
@@ -45,6 +47,8 @@ class QdaOpenResponsesFirstChunk implements ShouldQueue
     public function handle(): void
     {
         // dd('Processing first chunk for project ID: ' . $this->projectId . ', report ID: ' . $this->reportId, $this->chunkData);
+        app(UserAiProviderConfigService::class)->applyForUser($this->user?->id);
+
         $jsonDataService = new JsonDataService();
 
         $prompt = "Here is the first chunk of qualitative data (table: {$this->tableName}, chunk_index: {$this->chunkIndex})...\n\n" . json_encode($this->chunkData);
@@ -78,7 +82,7 @@ class QdaOpenResponsesFirstChunk implements ShouldQueue
         if ($qdaInsightsDecoded) {
             // log the status
 
-            \DB::table('report_log_open_endeds')
+            DB::table('report_log_open_endeds')
                 ->updateOrInsert(
                     [
                         'report_id' => $this->report->id,
@@ -89,13 +93,13 @@ class QdaOpenResponsesFirstChunk implements ShouldQueue
                     ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'table_name' => $this->tableName, 'chunk_index' => $this->chunkIndex, 'total_chunks' => $this->totalChunkCount]
                 );
                 event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
+            DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeCsvDataInsights'],
                     ['response' => json_encode($qdaInsightsDecoded), 'error' => null, 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Qualitative data insights for csv open-ended data initiated.']
                 );
         } else {
-            \DB::table('report_log_open_endeds')
+            DB::table('report_log_open_endeds')
                 ->updateOrInsert(
                     [
                         'report_id' => $this->report->id,
@@ -106,7 +110,7 @@ class QdaOpenResponsesFirstChunk implements ShouldQueue
                     ['response' => null, 'error' => $decodeError ?: 'No insights found for the report.', 'created_at' => now(), 'updated_at' => now(), 'table_name' => $this->tableName, 'chunk_index' => $this->chunkIndex, 'total_chunks' => $this->totalChunkCount]
                 );
                 event(new ReportStatusUpdate(reportId: $this->report->id));
-            \DB::table('report_logs')
+            DB::table('report_logs')
                 ->updateOrInsert(
                     ['report_id' => $this->report->id, 'agent' => 'ManualModeQualitativeCsvDataInsights'],
                     ['response' => null, 'error' => 'No insights found for the report.', 'created_at' => now(), 'updated_at' => now(), 'display_message' => 'Something went wrong with qualitative insights generation for the csv open-ended data.']

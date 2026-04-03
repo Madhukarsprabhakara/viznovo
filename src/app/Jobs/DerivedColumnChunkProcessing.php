@@ -9,6 +9,7 @@ use App\Ai\Agents\DerivedColumnChunkProcessor;
 use App\Models\User;
 use App\Services\JsonDataService;
 use App\Services\DerivedTableService;
+use App\Services\UserAiProviderConfigService;
 use Illuminate\Support\Facades\Log;
 // use App\Services\ReportLogService;
 // use App\Events\ReportStatusUpdate;
@@ -53,6 +54,9 @@ class DerivedColumnChunkProcessing implements ShouldQueue
         $jsonDataService = new JsonDataService();
         $derivedTableService = new DerivedTableService();
         $user = $this->userId ? User::find($this->userId) : null;
+
+        app(UserAiProviderConfigService::class)->applyForUser($user?->id);
+
         $previousChunkString = $this->previousCategories ? 'Here are the previous categories identified from the previous chunks analysis that you can use for reference: ' . $this->previousCategories : '';
         if ($this->modelKey == 'gpt-5') {
             $response = (new DerivedColumnChunkProcessor)->forUser($user)

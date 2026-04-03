@@ -12,6 +12,7 @@ use App\Services\JsonDataService;
 use App\Services\ProjectDataMetricsService;
 use App\Services\ProjectDataService;
 use App\Services\ReportLogService;
+use App\Services\UserAiProviderConfigService;
 use App\Events\ReportStatusUpdate;
 
 class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
@@ -47,6 +48,8 @@ class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
     public function handle(): void
     {
         //get the derived table columns and metrics
+        app(UserAiProviderConfigService::class)->applyForUser($this->user?->id);
+
         $reportLogService = new ReportLogService();
         $jsonDataService = new JsonDataService();
         $projectDataMetricsService = new ProjectDataMetricsService();
