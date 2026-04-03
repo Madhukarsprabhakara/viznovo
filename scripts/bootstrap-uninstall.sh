@@ -26,10 +26,20 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --install-dir)
+                if [[ $# -lt 2 ]]; then
+                    echo "Missing value for --install-dir"
+                    usage
+                    exit 1
+                fi
                 INSTALL_PARENT_DIR="$2"
                 shift 2
                 ;;
             --app-dir)
+                if [[ $# -lt 2 ]]; then
+                    echo "Missing value for --app-dir"
+                    usage
+                    exit 1
+                fi
                 APP_DIR_NAME="$2"
                 shift 2
                 ;;
@@ -125,11 +135,15 @@ main() {
     if [[ -f "$uninstall_script" ]]; then
         cd "$app_root"
 
-        local args=()
-        (( PURGE_IMAGES == 1 )) && args+=(--purge-images)
-        (( YES == 1 )) && args+=(--yes)
-
-        bash "$uninstall_script" "${args[@]}"
+        if (( PURGE_IMAGES == 1 && YES == 1 )); then
+            bash "$uninstall_script" --purge-images --yes
+        elif (( PURGE_IMAGES == 1 )); then
+            bash "$uninstall_script" --purge-images
+        elif (( YES == 1 )); then
+            bash "$uninstall_script" --yes
+        else
+            bash "$uninstall_script"
+        fi
     elif [[ -f "$compose_file" ]]; then
         echo "Installed app does not contain the new uninstall helper script. Falling back to direct stack teardown."
         fallback_uninstall "$app_root"

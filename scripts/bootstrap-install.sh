@@ -34,14 +34,29 @@ parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --archive-url)
+                if [[ $# -lt 2 ]]; then
+                    echo "Missing value for --archive-url"
+                    usage
+                    exit 1
+                fi
                 ARCHIVE_URL="$2"
                 shift 2
                 ;;
             --install-dir)
+                if [[ $# -lt 2 ]]; then
+                    echo "Missing value for --install-dir"
+                    usage
+                    exit 1
+                fi
                 INSTALL_PARENT_DIR="$2"
                 shift 2
                 ;;
             --app-dir)
+                if [[ $# -lt 2 ]]; then
+                    echo "Missing value for --app-dir"
+                    usage
+                    exit 1
+                fi
                 APP_DIR_NAME="$2"
                 shift 2
                 ;;

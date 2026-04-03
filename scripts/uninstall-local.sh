@@ -81,13 +81,11 @@ confirm() {
 }
 
 tear_down_stack() {
-    local down_args=(down -v --remove-orphans)
-
     if (( PURGE_IMAGES == 1 )); then
-        down_args+=(--rmi local)
+        compose down -v --remove-orphans --rmi local
+    else
+        compose down -v --remove-orphans
     fi
-
-    compose "${down_args[@]}"
 }
 
 remove_generated_env() {
