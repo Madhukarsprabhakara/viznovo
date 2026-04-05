@@ -213,6 +213,8 @@ class CompleteDataSetCreation implements Agent, Conversational, HasTools
         
         Generate PostgreSQL-compatible SQL assuming measure columns are double precision. Never emit ROUND(double precision, integer). For any rounding to fixed decimal places, cast the final expression to numeric first: ROUND((expression)::numeric, 2). Preserve NULLIF(..., 0) protections for division-by-zero in percentage calculations. \n\n
         
+        When generating queries that calculate percentage change for any numeric database column, correctly handle negative, zero, and positive values. Do not use a naive percentage-change formula if the baseline value can be negative or zero, as this may produce misleading or undefined results. Generate logic that explicitly accounts for sign changes, zero denominators, and mathematically valid interpretation of the result.
+
         When using UNION ALL ensure that the from clause is consistent and has a schema and table specified like from public.table. \n\n
         
         When generating PostgreSQL SQL that uses GROUP BY, never reference raw (non-aggregated) columns in SELECT, ORDER BY, or HAVING unless they are also included in the GROUP BY \n\n.
