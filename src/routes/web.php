@@ -100,6 +100,8 @@ Route::get('/reports/{project}/create', [App\Http\Controllers\ReportController::
     ->middleware(['auth', 'verified'])->name('reports.create');
 Route::get('/reports/{project}/autocreate', [App\Http\Controllers\ReportController::class, 'autoCreateForm'])
     ->middleware(['auth', 'verified'])->name('reports.autocreate');
+Route::get('/reports/{uuid}/pdf', [App\Http\Controllers\ReportController::class, 'downloadPdf'])
+    ->name('reports.pdf');
 Route::get('/reports/{uuid}', [App\Http\Controllers\ReportController::class, 'show'])->name('reports.show');
 Route::get('/reports/{report}/edit', [App\Http\Controllers\ReportController::class, 'edit'])
     ->middleware(['auth', 'verified'])->name('reports.edit');
