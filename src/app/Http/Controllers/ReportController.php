@@ -40,6 +40,7 @@ use App\Ai\Agents\CompleteDataSetCreation;
 use App\Jobs\ExecuteDerivedMetrics;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReportController extends Controller
 {
@@ -171,6 +172,7 @@ class ReportController extends Controller
                     if (!is_string($item)) {
                         continue;
                     }
+
                     $itemDecoded = json_decode($item, true);
                     if (json_last_error() === JSON_ERROR_NONE) {
                         return [$itemDecoded, null];
@@ -206,6 +208,357 @@ class ReportController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveNodeBinaryPath(): ?string
+    {
+        $candidates = [
+            env('BROWSERSHOT_NODE_BINARY'),
+            '/usr/bin/node',
+            '/usr/local/bin/node',
+            '/opt/homebrew/bin/node',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
+            if (is_file($candidate) && is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveNpmBinaryPath(): ?string
+    {
+        $candidates = [
+            env('BROWSERSHOT_NPM_BINARY'),
+            '/usr/bin/npm',
+            '/usr/local/bin/npm',
+            '/opt/homebrew/bin/npm',
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
+            if (is_file($candidate) && is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private function makeReportDownloadFilename(Report $report): string
+    {
+        $title = Str::slug($report->title ?: 'report');
+
+        return ($title !== '' ? $title : 'report') . '.pdf';
+    }
+
+    private function createReportBrowsershot(
+        string $html,
+        bool $singlePage = false,
+        int $timeout = 90,
+        int $protocolTimeout = 120,
+        string $waitUntil = 'networkidle0'
+    ): Browsershot
+    {
+        $browsershot = Browsershot::html($html)
+            ->showBackground()
+            ->emulateMedia('print')
+            ->windowSize(1440, $singlePage ? 2200 : 1600)
+            ->timeout($timeout)
+            ->setOption('protocolTimeout', $protocolTimeout * 1000)
+            ->noSandbox();
+
+        if ($waitUntil === 'networkidle0') {
+            $browsershot->waitUntilNetworkIdle();
+        } else {
+            $browsershot->setOption('waitUntil', $waitUntil);
+        }
+
+        $nodeBinary = $this->resolveNodeBinaryPath();
+        if ($nodeBinary) {
+            $browsershot->setNodeBinary($nodeBinary);
+        }
+
+        $npmBinary = $this->resolveNpmBinaryPath();
+        if ($npmBinary) {
+            $browsershot->setNpmBinary($npmBinary);
+        }
+
+        $chromePath = $this->resolveChromeExecutablePath();
+        if ($chromePath) {
+            $browsershot->setChromePath($chromePath);
+        }
+
+        return $browsershot;
+    }
+
+    private function resolveReportPdfDimensions(string $html, string $waitUntil = 'networkidle0'): array
+    {
+        $defaultWidthMm = (float) env('BROWSERSHOT_SINGLE_PAGE_WIDTH_MM', 210);
+        $defaultHeightMm = (float) env('BROWSERSHOT_SINGLE_PAGE_HEIGHT_MM', 2000);
+
+        try {
+            $result = $this->createReportBrowsershot(
+                $html,
+                true,
+                (int) env('BROWSERSHOT_DIMENSION_TIMEOUT', 60),
+                (int) env('BROWSERSHOT_DIMENSION_PROTOCOL_TIMEOUT', 120),
+                $waitUntil
+            )->evaluate(<<<'JS'
+(async () => {
+    const root = document.querySelector('.report-content') || document.body;
+    const elements = Array.from(root.querySelectorAll('*'));
+    const rects = [root, ...elements]
+        .map((element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width > 0 && rect.height > 0);
+
+    if (rects.length === 0) {
+        return JSON.stringify({
+            width: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth, 794),
+            height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight, 1123),
+        });
+    }
+
+    const left = Math.min(...rects.map((rect) => rect.left));
+    const right = Math.max(...rects.map((rect) => rect.right));
+    const top = Math.min(...rects.map((rect) => rect.top));
+    const bottom = Math.max(...rects.map((rect) => rect.bottom));
+
+    return JSON.stringify({
+        width: Math.max(right - left, 794),
+        height: Math.max(bottom - top, 1123),
+    });
+})()
+JS);
+
+            if (is_string($result)) {
+                $decoded = json_decode($result, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $result = $decoded;
+                }
+            }
+            if (!is_array($result)) {
+                return ['width' => $defaultWidthMm, 'height' => $defaultHeightMm];
+            }
+
+            $pxWidth = max((float) ($result['width'] ?? 0), 794.0);
+            $pxHeight = max((float) ($result['height'] ?? 0), 1123.0);
+            $heightScale = (float) env('BROWSERSHOT_HEIGHT_SCALE', 1.02);
+
+            return [
+                'width' => max(round($pxWidth * 25.4 / 96, 2), $defaultWidthMm),
+                'height' => max(round(($pxHeight * $heightScale) * 25.4 / 96, 2), 297.0),
+            ];
+        } catch (\Throwable $e) {
+            return ['width' => $defaultWidthMm, 'height' => $defaultHeightMm];
+        }
+    }
+
+    private function isFullHtmlDocument(string $html): bool
+    {
+        $trimmed = ltrim($html);
+
+        return str_starts_with(strtolower($trimmed), '<!doctype html')
+            || (stripos($trimmed, '<html') !== false && stripos($trimmed, '<body') !== false);
+    }
+
+    private function pdfDocumentStyleBlock(): string
+    {
+        return <<<'HTML'
+<style>
+  :root {
+    color-scheme: light;
+  }
+
+    html,
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+  @page {
+        margin: 0;
+  }
+
+  @media print {
+    html,
+    body {
+      color: #0f172a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        body {
+            padding: 12mm 10mm !important;
+            box-sizing: border-box !important;
+    }
+
+    [class*="backdrop-blur"] {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+        [data-lucide] {
+            display: none !important;
+        }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    span,
+    li,
+    td,
+    th {
+      color: #0f172a !important;
+      opacity: 1 !important;
+    }
+  }
+</style>
+HTML;
+    }
+
+    private function sanitizeFullDocumentForPdf(string $html): string
+    {
+        $sanitized = preg_replace_callback(
+            '/<script\b[^>]*(?:src=["\']([^"\']+)["\'])?[^>]*>.*?<\/script>/is',
+            static function (array $matches): string {
+                $src = $matches[1] ?? '';
+
+                if (is_string($src) && preg_match('/cdn\.tailwindcss\.com/i', $src) === 1) {
+                    return $matches[0];
+                }
+
+                return '';
+            },
+            $html
+        ) ?? $html;
+
+        return preg_replace('/\sdata-lucide="[^"]*"/i', '', $sanitized) ?? $sanitized;
+    }
+
+    private function shouldInjectTailwindCompatibility(string $html): bool
+    {
+        if (preg_match('/cdn\.tailwindcss\.com/i', $html) === 1) {
+            return false;
+        }
+
+        $usesTailwindV3Palette = preg_match('/(?:slate|rose|sky)-\d{2,3}/i', $html) === 1;
+        $referencesTailwindV2 = preg_match('/tailwindcss@2\.[^\/]*/i', $html) === 1;
+
+        return $usesTailwindV3Palette || $referencesTailwindV2;
+    }
+
+    private function injectTailwindCompatibility(string $html): string
+    {
+        if (! $this->shouldInjectTailwindCompatibility($html)) {
+            return $html;
+        }
+
+        return $this->injectIntoHtmlHead(
+            $html,
+            '<script src="https://cdn.tailwindcss.com?plugins=typography"></script>'
+        );
+    }
+
+    private function injectIntoHtmlHead(string $html, string $injection): string
+    {
+        if (stripos($html, '</head>') !== false) {
+            return preg_replace('/<\/head>/i', $injection . PHP_EOL . '</head>', $html, 1) ?? ($html . $injection);
+        }
+
+        if (stripos($html, '<html') !== false) {
+            return preg_replace('/<html[^>]*>/i', '$0<head>' . $injection . '</head>', $html, 1) ?? ($html . $injection);
+        }
+
+        return $injection . $html;
+    }
+
+    private function renderReportHtml(Report $report, bool $isPdfExport): string
+    {
+        $content = (string) $report->result;
+
+        if ($this->isFullHtmlDocument($content)) {
+            if (! $isPdfExport) {
+                return $this->injectTailwindCompatibility($content);
+            }
+
+            return $this->injectIntoHtmlHead(
+                $this->injectTailwindCompatibility($this->sanitizeFullDocumentForPdf($content)),
+                $this->pdfDocumentStyleBlock()
+            );
+        }
+
+        return view('Global.public_report', [
+            'content' => $content,
+            'report' => $report,
+            'isPdfExport' => $isPdfExport,
+        ])->render();
+    }
+
+    private function renderReportPdf(string $html): string
+    {
+        if ($this->isFullHtmlDocument($html)) {
+            $dimensions = $this->resolveReportPdfDimensions($html, 'load');
+
+            return $this->createReportBrowsershot(
+                $html,
+                true,
+                (int) env('BROWSERSHOT_FULL_DOCUMENT_TIMEOUT', 120),
+                (int) env('BROWSERSHOT_FULL_DOCUMENT_PROTOCOL_TIMEOUT', 180),
+                'load'
+            )
+                ->paperSize($dimensions['width'], $dimensions['height'], 'mm')
+                ->margins(0, 0, 0, 0)
+                ->setOption('preferCSSPageSize', true)
+                ->pdf();
+        }
+
+        $dimensions = $this->resolveReportPdfDimensions($html);
+
+        return $this->createReportBrowsershot(
+            $html,
+            true,
+            (int) env('BROWSERSHOT_SINGLE_PAGE_TIMEOUT', 120),
+            (int) env('BROWSERSHOT_SINGLE_PAGE_PROTOCOL_TIMEOUT', 180)
+        )
+            ->paperSize($dimensions['width'], $dimensions['height'], 'mm')
+            ->margins(0, 0, 0, 0)
+            ->setOption('preferCSSPageSize', true)
+            ->pdf();
+    }
+
+    public function downloadPdf($uuid)
+    {
+        $report = Report::where('uuid', $uuid)->firstOrFail();
+
+        try {
+            $html = $this->renderReportHtml($report, true);
+            $pdf = $this->renderReportPdf($html);
+
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $this->makeReportDownloadFilename($report) . '"',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Report PDF download failed.', [
+                'uuid' => $uuid,
+                'message' => $e->getMessage(),
+                'exception' => get_class($e),
+            ]);
+
+            return response('Failed to generate report PDF.', 500);
+        }
     }
 
     /**
@@ -979,11 +1332,13 @@ class ReportController extends Controller
      */
     public function show($uuid)
     {
-        //
         try {
             $report = Report::where('uuid', $uuid)->firstOrFail();
-            $content = $report->result;
-            return view('Global.public_report', compact('content'));
+            $html = $this->renderReportHtml($report, false);
+
+            return response($html, 200, [
+                'Content-Type' => 'text/html; charset=UTF-8',
+            ]);
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Failed to load report: ' . $e->getMessage()])->withInput();
         }

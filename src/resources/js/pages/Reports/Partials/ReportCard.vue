@@ -21,7 +21,13 @@
         >
           <Info class="size-4" aria-hidden="true" />
         </button>
-        <!-- <span class="inline-flex items-center rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20">{{ report.time_taken_minutes }} min</span> -->
+        <a
+          :href="`/reports/${report.uuid}/pdf`"
+          class="inline-flex items-center rounded-md p-1 text-slate-600 hover:bg-slate-100 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+          :title="`Download report ${report.title} as PDF`"
+        >
+          <Download class="size-4" aria-hidden="true" />
+        </a>
         <a
           :href="`/reports/${report.uuid}`"
           target="_blank"
@@ -85,7 +91,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/vue'
 import DynamicNotification from '@/components/DynamicNotification.vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
-import { MoreVertical, Edit, Trash2, ExternalLink, Info } from 'lucide-vue-next'
+import { MoreVertical, Edit, Trash2, ExternalLink, Info, Download } from 'lucide-vue-next'
 
 const props = defineProps({
   report: {
