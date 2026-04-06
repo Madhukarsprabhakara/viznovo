@@ -66,8 +66,16 @@ function Ensure-Compose {
 
 function New-RandomHex([int]$ByteCount) {
     $bytes = New-Object byte[] $ByteCount
-    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-    return [Convert]::ToHexString($bytes).ToLowerInvariant()
+    $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+
+    try {
+        $random.GetBytes($bytes)
+    }
+    finally {
+        $random.Dispose()
+    }
+
+    return ([System.BitConverter]::ToString($bytes).Replace('-', '')).ToLowerInvariant()
 }
 
 function Ensure-EnvFile {
