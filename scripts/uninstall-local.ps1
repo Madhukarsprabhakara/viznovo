@@ -13,11 +13,10 @@ $ProjectName = 'irep-install'
 
 function Invoke-Compose {
     param(
-        [Parameter(ValueFromRemainingArguments = $true)]
-        [string[]]$Args
+        [string[]]$ComposeArgs
     )
 
-    & docker compose -p $ProjectName -f $ComposeFile @Args
+    & docker compose -p $ProjectName -f $ComposeFile @ComposeArgs
 }
 
 function Ensure-Docker {
@@ -51,7 +50,7 @@ if ($PurgeImages) {
     $downArgs += @('--rmi', 'local')
 }
 
-Invoke-Compose @downArgs
+Invoke-Compose $downArgs
 
 if (-not $KeepEnv -and (Test-Path $EnvFile)) {
     Remove-Item -Force $EnvFile

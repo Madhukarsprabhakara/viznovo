@@ -9,11 +9,10 @@ $ProjectName = 'irep-install'
 
 function Invoke-Compose {
     param(
-        [Parameter(ValueFromRemainingArguments = $true)]
-        [string[]]$Args
+        [string[]]$ComposeArgs
     )
 
-    & docker compose -p $ProjectName -f $ComposeFile @Args
+    & docker compose -p $ProjectName -f $ComposeFile @ComposeArgs
 }
 
 function Wait-ForDocker {
@@ -105,7 +104,7 @@ function Prepare-HostDirs {
 
 function Wait-ForDatabase {
     for ($i = 0; $i -lt 60; $i++) {
-        Invoke-Compose exec -T irep_install_db pg_isready -U postgres -d irep_install *> $null
+        Invoke-Compose @('exec', '-T', 'irep_install_db', 'pg_isready', '-U', 'postgres', '-d', 'irep_install') *> $null
         if ($LASTEXITCODE -eq 0) {
             return
         }
@@ -117,7 +116,7 @@ function Wait-ForDatabase {
 }
 
 function Invoke-Cli([string]$Command) {
-    Invoke-Compose run --rm irep_install_cli $Command
+    Invoke-Compose @('run', '--rm', 'irep_install_cli', $Command)
 }
 
 Ensure-Docker
@@ -128,7 +127,7 @@ Prepare-HostDirs
 $dbPasswordLine = (Get-Content $EnvFile | Where-Object { $_ -like 'DB_PASSWORD=*' } | Select-Object -First 1)
 $Env:IREP_INSTALL_DB_PASSWORD = $dbPasswordLine.Substring('DB_PASSWORD='.Length)
 
-Invoke-Compose up -d --build irep_install_db irep_install_php
+Invoke-Compose @('up', '-d', '--build', 'irep_install_db', 'irep_install_php')
 Wait-ForDatabase
 
 Invoke-Cli 'composer install --no-interaction --prefer-dist'
@@ -141,7 +140,7 @@ Invoke-Cli 'php artisan storage:link || true'
 Invoke-Cli 'php artisan config:clear && php artisan route:clear && php artisan view:clear'
 Invoke-Cli 'npm run build'
 
-Invoke-Compose up -d --build irep_install_nginx irep_install_reverb irep_install_supervisord
+Invoke-Compose @('up', '-d', '--build', 'irep_install_nginx', 'irep_install_reverb', 'irep_install_supervisord')
 
 Start-Process $AppUrl
 
