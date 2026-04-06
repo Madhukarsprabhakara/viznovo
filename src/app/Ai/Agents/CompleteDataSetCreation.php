@@ -22,7 +22,9 @@ class CompleteDataSetCreation implements Agent, Conversational, HasTools
 
         For example, if there is an open ended question in the survey asking for feedback on a product which is not quantifiable, you can create a intermediate table structure with calculated columns that codify open-ended responses using  phrases or keyword/theme based logic for better categorization to categorize the open ended responses into different buckets.\n\n 
 
-        Every open-ended response should have two calculated columns one capturing the broader phrase, theme or category and the other with more granular phrase, theme or category for detailed insights. \n\n
+        Every open-ended response should have minimum two calculated columns one capturing the broader phrase, theme or category and the other with more granular phrase, theme or category for detailed insights. \n\n
+
+        Open-ended columns may have more calculated columns if that is necessary. For example, if the user request expects open-ended responses to be analyzed in multiple ways, additional calculated columns can be created to capture those insights. \n\n
 
         You need to come up with prompt instructions for how to bucket the open ended responses into different phrases, themes or categories based on the open ended response.  \n\n
 
