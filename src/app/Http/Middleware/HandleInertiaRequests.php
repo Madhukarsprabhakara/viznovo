@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
-
+use App\Services\KeyService;
 class HandleInertiaRequests extends Middleware
 {
     /**
@@ -37,7 +37,12 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
+        $keyStatus = null;
+        if (config('app.local_install')) {
+            $keyService = new KeyService();
+            $keyStatus = $keyService->getKeySetStatus($request->user()->id);
 
+        }
         return [
             ...parent::share($request),
             'name' => config('app.name'),
@@ -49,6 +54,7 @@ class HandleInertiaRequests extends Middleware
                 'message' => fn () => $request->session()->get('message'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'keyStatus' => config('app.local_install') ? $keyStatus : true,
         ];
     }
 }

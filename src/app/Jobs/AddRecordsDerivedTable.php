@@ -55,6 +55,7 @@ class AddRecordsDerivedTable implements ShouldQueue
             'project_data_id' => $projectData->id,
             'status_message' => 'Derived table populated with ' . $inserted . ' records',
             'job' => 'AddRecordsDerivedTable',
+            'is_imported' => 1,
         ]);
     }
 }
