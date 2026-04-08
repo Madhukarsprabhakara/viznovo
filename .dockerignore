@@ -4,10 +4,8 @@
 /src/.env.install
 /src/bootstrap/cache/*.php
 /src/node_modules
-/src/public/build
 /src/storage/app/private
 /src/storage/framework/cache/data
 /src/storage/framework/sessions
 /src/storage/framework/views
 /src/storage/logs
-/src/vendor
