@@ -131,7 +131,7 @@ function Sync-DatabasePassword {
 }
 
 function Invoke-Cli([string]$Command) {
-    Invoke-Compose @('run', '--rm', 'irep_install_cli', $Command)
+    Invoke-Compose @('run', '--rm', 'irep_install_cli', '/bin/sh', '-lc', $Command)
 }
 
 function Invoke-ComposerInstall {

@@ -117,7 +117,7 @@ synchronize_database_password() {
 }
 
 run_cli() {
-    compose run --rm irep_install_cli "$1"
+    compose run --rm irep_install_cli /bin/sh -lc "$1"
 }
 
 run_composer_install() {
