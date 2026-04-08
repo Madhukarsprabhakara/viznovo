@@ -40,7 +40,7 @@ RUN mkdir -p \
     /var/www/html/storage/framework/sessions \
     /var/www/html/storage/framework/views \
     /var/www/html/storage/logs \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+    && chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
 RUN cp .env.install.example .env \
     && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
@@ -83,6 +83,7 @@ RUN docker-php-ext-install \
     pcntl
 
 COPY ./php/php-custom.ini /usr/local/etc/php/conf.d/php-custom.ini
+COPY ./scripts/install-runtime-entrypoint.sh /usr/local/bin/install-runtime-entrypoint.sh
 COPY ./supervisord/supervisord.conf /etc/supervisord.conf
 COPY ./supervisord/worker.conf /etc/supervisor/conf.d/worker.conf
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -100,8 +101,10 @@ RUN mkdir -p \
     /var/www/html/storage/logs \
     /var/www/html/bootstrap/cache \
     && chmod -R 777 /tmp/puppeteer \
+    && chmod +x /usr/local/bin/install-runtime-entrypoint.sh \
     && ln -sfn /var/www/html/storage/app/public /var/www/html/public/storage \
     && chown -R laravel:laravel /var/www/html \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+    && chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
 
+ENTRYPOINT ["/usr/local/bin/install-runtime-entrypoint.sh"]
 CMD ["php-fpm"]

@@ -89,21 +89,27 @@ function Ensure-EnvFile {
     }
 
     $appKey = 'base64:' + [Convert]::ToBase64String($appKeyBytes)
+    $dbPassword = New-RandomHex 16
+    $reverbSecret = New-RandomHex 16
 
     if (Test-Path $EnvFile) {
         $content = Get-Content $EnvFile -Raw
-        if ($content -match '(?m)^APP_KEY=$') {
+        if ($content -match '(?m)^APP_KEY=$|^APP_KEY=__APP_KEY__$') {
             $content = [regex]::Replace($content, '(?m)^APP_KEY=$', "APP_KEY=$appKey")
-            Set-Content -Path $EnvFile -Value $content -NoNewline
+            $content = [regex]::Replace($content, '(?m)^APP_KEY=__APP_KEY__$', "APP_KEY=$appKey")
         }
+
+        $content = [regex]::Replace($content, '(?m)^DB_PASSWORD=__DB_PASSWORD__$', "DB_PASSWORD=$dbPassword")
+        $content = [regex]::Replace($content, '(?m)^REVERB_APP_SECRET=__REVERB_APP_SECRET__$', "REVERB_APP_SECRET=$reverbSecret")
+        Set-Content -Path $EnvFile -Value $content -NoNewline
 
         return
     }
 
     $content = Get-Content $EnvTemplate -Raw
     $content = $content.Replace('__APP_KEY__', $appKey)
-    $content = $content.Replace('__DB_PASSWORD__', (New-RandomHex 16))
-    $content = $content.Replace('__REVERB_APP_SECRET__', (New-RandomHex 16))
+    $content = $content.Replace('__DB_PASSWORD__', $dbPassword)
+    $content = $content.Replace('__REVERB_APP_SECRET__', $reverbSecret)
     Set-Content -Path $EnvFile -Value $content -NoNewline
 }
 
@@ -118,6 +124,10 @@ function Wait-ForDatabase {
     }
 
     throw 'Database did not become ready in time.'
+}
+
+function Sync-DatabasePassword {
+    Invoke-Compose @('exec', '-T', 'irep_install_db', 'sh', '-lc', "psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c \"ALTER USER postgres WITH PASSWORD '$Env:IREP_INSTALL_DB_PASSWORD';\"") *> $null
 }
 
 function Invoke-Cli([string]$Command) {
@@ -139,6 +149,7 @@ Invoke-Compose @('build', 'irep_install_php')
 Invoke-Compose @('build', 'irep_install_nginx')
 Invoke-Compose @('up', '-d', 'irep_install_db', 'irep_install_php')
 Wait-ForDatabase
+Sync-DatabasePassword
 
 Invoke-ComposerInstall
 Invoke-Cli "php artisan db:seed --class='Database\Seeders\AIModelsSeeder' --force"

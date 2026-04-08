@@ -69,18 +69,26 @@ ensure_env_file() {
     local reverb_secret
 
     app_key="base64:$(openssl rand -base64 32 | tr -d '\r\n')"
+    db_password="$(openssl rand -hex 16)"
+    reverb_secret="$(openssl rand -hex 16)"
 
     if [[ -f "$ENV_FILE" ]]; then
-        if grep -q '^APP_KEY=$' "$ENV_FILE"; then
-            sed -i.bak "s|^APP_KEY=$|APP_KEY=$app_key|" "$ENV_FILE"
-            rm -f "$ENV_FILE.bak"
+        if grep -Eq '^APP_KEY=$|^APP_KEY=__APP_KEY__$' "$ENV_FILE"; then
+            sed -i.bak -E "s|^APP_KEY=$|APP_KEY=$app_key|; s|^APP_KEY=__APP_KEY__$|APP_KEY=$app_key|" "$ENV_FILE"
         fi
+
+        if grep -Eq '^DB_PASSWORD=__DB_PASSWORD__$' "$ENV_FILE"; then
+            sed -i.bak -E "s|^DB_PASSWORD=__DB_PASSWORD__$|DB_PASSWORD=$db_password|" "$ENV_FILE"
+        fi
+
+        if grep -Eq '^REVERB_APP_SECRET=__REVERB_APP_SECRET__$' "$ENV_FILE"; then
+            sed -i.bak -E "s|^REVERB_APP_SECRET=__REVERB_APP_SECRET__$|REVERB_APP_SECRET=$reverb_secret|" "$ENV_FILE"
+        fi
+
+        rm -f "$ENV_FILE.bak"
 
         return
     fi
-
-    db_password="$(openssl rand -hex 16)"
-    reverb_secret="$(openssl rand -hex 16)"
 
     sed \
         -e "s|__APP_KEY__|$app_key|g" \
@@ -102,6 +110,10 @@ wait_for_database() {
 
         sleep 2
     done
+}
+
+synchronize_database_password() {
+    compose exec -T irep_install_db sh -lc "psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c \"ALTER USER postgres WITH PASSWORD '$IREP_INSTALL_DB_PASSWORD';\"" >/dev/null
 }
 
 run_cli() {
@@ -129,6 +141,7 @@ main() {
     compose build irep_install_nginx
     compose up -d irep_install_db irep_install_php
     wait_for_database
+    synchronize_database_password
 
     run_composer_install
     run_cli "php artisan db:seed --class='Database\\Seeders\\AIModelsSeeder' --force"

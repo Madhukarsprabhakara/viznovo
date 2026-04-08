@@ -38,7 +38,7 @@ services:
 
   irep_install_cli:
     <<: *install-app
-    entrypoint: ['/bin/sh', '-lc']
+    command: ['/bin/sh', '-lc']
 
   irep_install_nginx:
     image: irep-install-nginx:local
@@ -61,7 +61,7 @@ services:
         condition: service_healthy
       irep_install_php:
         condition: service_started
-    entrypoint: ['php', 'artisan', 'reverb:start', '--host', '0.0.0.0', '--port', '8080']
+    command: ['php', 'artisan', 'reverb:start', '--host', '0.0.0.0', '--port', '8080']
     ports:
       - '8081:8080'
 
