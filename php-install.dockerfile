@@ -32,6 +32,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 COPY ./src/ /var/www/html
 
+RUN export PUPPETEER_VERSION="$(node -p "require('/var/www/html/package.json').dependencies.puppeteer")" \
+    && PUPPETEER_SKIP_DOWNLOAD=1 npm install -g "puppeteer@${PUPPETEER_VERSION}" \
+    && npm cache clean --force
+
 RUN mkdir -p \
     /var/www/html/bootstrap/cache \
     /var/www/html/storage/app/private \

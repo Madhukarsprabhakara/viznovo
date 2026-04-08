@@ -2,6 +2,7 @@ FROM php:8.4-fpm-alpine
 
 RUN addgroup -g 1000 laravel && adduser -G laravel -g laravel -s /bin/sh -D laravel
 RUN mkdir -p /var/www/html
+COPY ./src/package.json ./src/package-lock.json /tmp/irep-node/
 
 # Base OS deps (Alpine)
 RUN apk add --no-cache \
@@ -41,6 +42,12 @@ RUN mkdir -p /tmp/puppeteer && chmod -R 777 /tmp/puppeteer
 
 # install node and npm (Alpine packages)
 RUN apk add --no-cache nodejs npm
+
+ENV PUPPETEER_SKIP_DOWNLOAD=1
+
+RUN export PUPPETEER_VERSION="$(node -p "require('/tmp/irep-node/package.json').dependencies.puppeteer")" \
+    && npm install -g "puppeteer@${PUPPETEER_VERSION}" \
+    && npm cache clean --force
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

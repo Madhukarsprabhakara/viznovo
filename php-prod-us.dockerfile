@@ -23,6 +23,12 @@ RUN chmod -R 777 /var/www/html/bootstrap/cache
 # install node and npm (Alpine packages)
 RUN apk add --no-cache nodejs npm
 
+ENV PUPPETEER_SKIP_DOWNLOAD=1
+
+RUN export PUPPETEER_VERSION="$(node -p "require('/var/www/html/package.json').dependencies.puppeteer")" \
+    && npm install -g "puppeteer@${PUPPETEER_VERSION}" \
+    && npm cache clean --force
+
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN apk add --no-cache poppler-utils
 RUN apk add libxml2-dev
