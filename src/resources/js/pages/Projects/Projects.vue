@@ -24,7 +24,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-           <ApiKeySet />
+           <ApiKeySet v-if="!$page.props.keyStatus"/>
           <div v-if="$page.props.projects.length ===0" class="mt-35">
                 <EmptyState v-if="$page.props.projects.length ===0"/>
                
