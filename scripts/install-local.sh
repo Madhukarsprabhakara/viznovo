@@ -146,7 +146,6 @@ main() {
     run_composer_install
     run_cli "php artisan db:seed --class='Database\\Seeders\\AIModelsSeeder' --force"
     run_cli "php artisan db:seed --class='Database\\Seeders\\CsvDataTypeSeeder' --force"
-    run_cli "php artisan storage:link || true"
     run_cli "php artisan config:clear && php artisan route:clear && php artisan view:clear"
 
     compose up -d irep_install_nginx irep_install_reverb irep_install_supervisord

@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.install.yml"
 ENV_FILE="$ROOT_DIR/src/.env.install"
+PUBLIC_STORAGE_LINK="$ROOT_DIR/src/public/storage"
 PROJECT_NAME="irep-install"
 REMOVE_ENV_FILE=1
 PURGE_IMAGES=0
@@ -94,12 +95,24 @@ remove_generated_env() {
     fi
 }
 
+remove_generated_symlink() {
+    if [[ -L "$PUBLIC_STORAGE_LINK" ]]; then
+        rm -f "$PUBLIC_STORAGE_LINK"
+        return
+    fi
+
+    if [[ -d "$PUBLIC_STORAGE_LINK" ]] && [[ -z "$(ls -A "$PUBLIC_STORAGE_LINK")" ]]; then
+        rmdir "$PUBLIC_STORAGE_LINK" 2>/dev/null || true
+    fi
+}
+
 main() {
     parse_args "$@"
     ensure_docker
     confirm
     tear_down_stack
     remove_generated_env
+    remove_generated_symlink
     echo "Installer deployment removed from this checkout."
 }
 

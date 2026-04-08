@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 $RootDir = Split-Path -Parent $PSScriptRoot
 $ComposeFile = Join-Path $RootDir 'docker-compose.install.yml'
 $EnvFile = Join-Path $RootDir 'src/.env.install'
+$PublicStorageLink = Join-Path $RootDir 'src/public/storage'
 $ProjectName = 'irep-install'
 
 function Invoke-Compose {
@@ -54,6 +55,17 @@ Invoke-Compose $downArgs
 
 if (-not $KeepEnv -and (Test-Path $EnvFile)) {
     Remove-Item -Force $EnvFile
+}
+
+if (Test-Path $PublicStorageLink) {
+    $item = Get-Item $PublicStorageLink -Force
+
+    if ($item.LinkType) {
+        Remove-Item -Force $PublicStorageLink
+    }
+    elseif ($item.PSIsContainer -and -not (Get-ChildItem $PublicStorageLink -Force | Select-Object -First 1)) {
+        Remove-Item -Force $PublicStorageLink
+    }
 }
 
 Write-Host 'Installer deployment removed from this checkout.'

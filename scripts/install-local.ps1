@@ -154,7 +154,6 @@ Sync-DatabasePassword
 Invoke-ComposerInstall
 Invoke-Cli "php artisan db:seed --class='Database\Seeders\AIModelsSeeder' --force"
 Invoke-Cli "php artisan db:seed --class='Database\Seeders\CsvDataTypeSeeder' --force"
-Invoke-Cli 'php artisan storage:link || true'
 Invoke-Cli 'php artisan config:clear && php artisan route:clear && php artisan view:clear'
 
 Invoke-Compose @('up', '-d', 'irep_install_nginx', 'irep_install_reverb', 'irep_install_supervisord')
