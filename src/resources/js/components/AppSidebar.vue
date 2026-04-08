@@ -8,6 +8,7 @@ import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid, ChartNoAxesCombined } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
+import ApiKeySet from './ApiKeySet.vue';
 
 const mainNavItems: NavItem[] = [
     {
@@ -49,8 +50,9 @@ const footerNavItems: NavItem[] = [
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
+            
         </SidebarContent>
-
+        
         <SidebarFooter>
             <NavFooter :items="footerNavItems" />
             <NavUser />

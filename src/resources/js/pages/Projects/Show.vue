@@ -94,14 +94,14 @@ onMounted(() => {
 <template>
 
     <Head title="File Uploads" />
-
+    
     <AppLayout :breadcrumbs="breadcrumbs">
-
+        
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
             <ActionTabs :project_id="props.project.id" />
             <!-- Collapsible Card -->
             <div class="grid auto-rows-min min-h-screen gap-4 md:grid-cols-2">
-
+                
                 <div class="mb-2">
                     <div class="rounded-xl border border-sidebar-border/70 bg-white dark:bg-gray-900 shadow p-4 transition-all duration-300"
                         :class="cardCollapsed ? 'h-20 overflow-hidden' : ''">

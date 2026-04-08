@@ -5,6 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import EmptyState from './Partials/EmptyState.vue';
 import ListProjects from './Partials/ListProjects.vue';
+import ApiKeySet from '@/components/ApiKeySet.vue';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Projects',
@@ -23,7 +24,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-           
+           <ApiKeySet />
           <div v-if="$page.props.projects.length ===0" class="mt-35">
                 <EmptyState v-if="$page.props.projects.length ===0"/>
                
