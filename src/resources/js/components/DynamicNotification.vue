@@ -28,29 +28,28 @@
                   <ul v-if="normalizedLogs.length > 0" role="list" class="space-y-3">
                     <li v-for="log in normalizedLogs" :key="log.id" class="border-b border-gray-200 pb-3 last:border-b-0 last:pb-0">
                       <p class="text-sm text-gray-700">{{ log.message }}</p>
-                      <p v-if="log.timestamp" class="mt-1 text-xs text-gray-500">{{ log.timestamp }}</p>
+                      <div v-if="log.isReportSuccessful && reportUuid" class="mt-2 flex items-center gap-2">
+                        <a
+                          :href="`/reports/${reportUuid}/pdf`"
+                          class="inline-flex items-center rounded-md p-1 text-slate-600 hover:bg-slate-100 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+                          :title="`Download report ${title} as PDF`"
+                        >
+                          <Download class="size-4" aria-hidden="true" />
+                        </a>
+                        <a
+                          :href="`/reports/${reportUuid}`"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="inline-flex items-center rounded-md p-1 text-orange-700 hover:bg-blue-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+                          :title="`Open public report /reports/${reportUuid}`"
+                        >
+                          <ExternalLink class="size-4" aria-hidden="true" />
+                        </a>
+                      </div>
+                      <p v-else-if="log.timestamp" class="mt-1 text-xs text-gray-500">{{ log.timestamp }}</p>
                     </li>
                   </ul>
                   <p v-else class="text-sm text-gray-500">No report logs available yet.</p>
-                </div>
-
-                <div v-if="hasSuccessfulReport && reportUuid" class="mt-3 flex items-center gap-2">
-                  <a
-                    :href="`/reports/${reportUuid}/pdf`"
-                    class="inline-flex items-center rounded-md p-1 text-slate-600 hover:bg-slate-100 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
-                    :title="`Download report ${title} as PDF`"
-                  >
-                    <Download class="size-4" aria-hidden="true" />
-                  </a>
-                  <a
-                    :href="`/reports/${reportUuid}`"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="inline-flex items-center rounded-md p-1 text-orange-700 hover:bg-blue-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
-                    :title="`Open public report /reports/${reportUuid}`"
-                  >
-                    <ExternalLink class="size-4" aria-hidden="true" />
-                  </a>
                 </div>
 
                 <div class="mt-3 flex">
@@ -112,9 +111,5 @@ const normalizedLogs = computed(() => {
 
 const isAgentWorking = computed(() => {
   return !normalizedLogs.value.some((log) => log.isReportSuccessful)
-})
-
-const hasSuccessfulReport = computed(() => {
-  return normalizedLogs.value.some((log) => log.isReportSuccessful)
 })
 </script>
