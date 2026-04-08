@@ -11,5 +11,13 @@ class KeyService
             ->where('user_id', $userId)
             ->first();
     }
+    public function getKeySetStatus($userId)
+    {
+        $userTokens= ModelAccess::where('user_id', $userId)->get();
+        if ($userTokens->isEmpty()) {
+            return false;
+        }
+        return true;
+    }
     
 }
