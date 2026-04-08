@@ -24,14 +24,31 @@
         <tbody>
           <tr v-for="(file, fileIdx) in files" :key="file.id">
             <td :class="[fileIdx === 0 ? '' : 'border-t border-transparent', 'relative py-4 pl-4 pr-3 text-sm sm:pl-6']">
-              <div class="font-medium text-gray-900">
+              <div class="flex items-center gap-2 font-medium text-gray-900">
+                <LoaderCircle
+                  v-if="shouldShowImportSpinner(file)"
+                  class="h-4 w-4 animate-spin text-sky-600"
+                />
+                <CircleAlert
+                  v-else-if="shouldShowImportFailure(file)"
+                  class="h-4 w-4 text-red-600"
+                />
+                <CheckCircle2
+                  v-else-if="shouldShowImportSuccess(file)"
+                  class="h-4 w-4 text-green-600"
+                />
                 {{ file.name }}
-                
               </div>
               
-              <div v-if="file.project_data_logs.length > 0">
-                <span v-if="file.type==='text/csv'" class=" text-green-600">
-                  Status: {{file.project_data_logs[file.project_data_logs.length - 1].status_message}}
+              <div v-if="(file.project_data_logs?.length ?? 0) > 0">
+                <span
+                  v-if="file.type==='text/csv'"
+                  :class="[
+                    'text-sm',
+                    shouldShowImportFailure(file) ? 'text-red-600' : 'text-green-600',
+                  ]"
+                >
+                  Status: {{ getLatestProjectDataLog(file)?.status_message }}
                 </span>
               </div>
               
@@ -58,23 +75,102 @@
           </tr>
         </tbody>
       </table>
+      <div
+        v-if="shouldShowImportNotice()"
+        class="border-t border-gray-200 px-4 py-4 sm:px-6"
+      >
+        <div class="flex items-start gap-3">
+          <CheckCircle2
+            v-if="hasAnySuccessfulCsvImport()"
+            class="mt-0.5 h-5 w-5 shrink-0 text-green-600"
+          />
+          <p :class="['text-sm leading-6', hasAnySuccessfulCsvImport() ? 'text-green-600' : 'text-sky-900']">
+            {{ hasAnySuccessfulCsvImport()
+              ? 'You can now start creating reports using the Intelligent Reports tab on the top.'
+              : 'Please wait for the files to be imported before beginning to create your report through the Intelligent Reports tab.' }}
+          </p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
+import { CheckCircle2, CircleAlert, LoaderCircle } from 'lucide-vue-next';
+
+type ProjectDataLog = {
+  id?: number | string | null,
+  status_message?: string | null,
+  is_imported?: number | string | null,
+}
+
+type ProjectFile = {
+  id: number | string,
+  name: string,
+  url: string,
+  type?: string | null,
+  project_data_logs?: ProjectDataLog[],
+}
 
 const props = defineProps<{
-  files: Array<{
-    id: number|string,
-    name: string,
-    url: string,
-    type?: string
-  }>
+  files: ProjectFile[]
 }>();
 
 const form = useForm({});
+
+const getLatestProjectDataLog = (file: ProjectFile) => {
+  const logs = file.project_data_logs ?? [];
+
+  if (logs.length === 0) {
+    return null;
+  }
+
+  return logs.reduce((latestLog, currentLog) => {
+    const latestId = Number(latestLog.id ?? 0);
+    const currentId = Number(currentLog.id ?? 0);
+
+    return currentId >= latestId ? currentLog : latestLog;
+  });
+};
+
+const shouldShowImportSpinner = (file: ProjectFile) => {
+  if (file.type !== 'text/csv') {
+    return false;
+  }
+
+  const latestLog = getLatestProjectDataLog(file);
+
+  return latestLog !== null
+    && Number(latestLog.is_imported ?? 0) !== 1
+    && latestLog.status_message !== 'Import failed';
+};
+
+const shouldShowImportFailure = (file: ProjectFile) => {
+  if (file.type !== 'text/csv') {
+    return false;
+  }
+
+  const latestLog = getLatestProjectDataLog(file);
+
+  return latestLog?.status_message === 'Import failed';
+};
+
+const shouldShowImportSuccess = (file: ProjectFile) => {
+  if (file.type !== 'text/csv') {
+    return false;
+  }
+
+  const latestLog = getLatestProjectDataLog(file);
+
+  return latestLog !== null && Number(latestLog.is_imported ?? 0) === 1;
+};
+
+const getCsvFiles = () => props.files.filter((file) => file.type === 'text/csv');
+
+const hasAnySuccessfulCsvImport = () => getCsvFiles().some((file) => shouldShowImportSuccess(file));
+
+const shouldShowImportNotice = () => getCsvFiles().length > 0;
 
 const deleteFileFinally = (fileId: number | string) => {
   form.delete('/projectdata/' + fileId, {

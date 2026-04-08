@@ -34,6 +34,25 @@
                   <p v-else class="text-sm text-gray-500">No report logs available yet.</p>
                 </div>
 
+                <div v-if="hasSuccessfulReport && reportUuid" class="mt-3 flex items-center gap-2">
+                  <a
+                    :href="`/reports/${reportUuid}/pdf`"
+                    class="inline-flex items-center rounded-md p-1 text-slate-600 hover:bg-slate-100 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+                    :title="`Download report ${title} as PDF`"
+                  >
+                    <Download class="size-4" aria-hidden="true" />
+                  </a>
+                  <a
+                    :href="`/reports/${reportUuid}`"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center rounded-md p-1 text-orange-700 hover:bg-blue-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+                    :title="`Open public report /reports/${reportUuid}`"
+                  >
+                    <ExternalLink class="size-4" aria-hidden="true" />
+                  </a>
+                </div>
+
                 <div class="mt-3 flex">
                   <button type="button" class="rounded-md text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500" @click="emit('close')">Dismiss</button>
                 </div>
@@ -55,7 +74,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Coffee, Info, X } from 'lucide-vue-next'
+import { Coffee, Download, ExternalLink, Info, X } from 'lucide-vue-next'
 
 const props = defineProps({
   show: {
@@ -74,6 +93,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  reportUuid: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['close'])
@@ -83,10 +106,15 @@ const normalizedLogs = computed(() => {
     id: log.id ?? `${index}-${log.created_at ?? 'log'}`,
     message: log.display_message || log.error || 'Log entry recorded.',
     timestamp: log.created_at || '',
+    isReportSuccessful: Number(log.is_report_successful ?? 0) === 1,
   }))
 })
 
 const isAgentWorking = computed(() => {
-  return !normalizedLogs.value.some((log) => log.message === 'Report created successfully.')
+  return !normalizedLogs.value.some((log) => log.isReportSuccessful)
+})
+
+const hasSuccessfulReport = computed(() => {
+  return normalizedLogs.value.some((log) => log.isReportSuccessful)
 })
 </script>

@@ -138,12 +138,12 @@ class CreateDashboardJ implements ShouldQueue
 
         if ($report->result) {
             // log the status
-            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Report created successfully.');
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Report created successfully.', 1);
             event(new ReportStatusUpdate(reportId: $this->reportId));
             
         } else {
             event(new ReportStatusUpdate(reportId: $this->reportId));
-            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Failed to create report: ' . ($decodeError ?? 'Unknown error'));
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Failed to create report: ' . ($decodeError ?? 'Unknown error'), 0);
         }
     }
 }

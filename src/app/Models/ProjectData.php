@@ -76,6 +76,6 @@ class ProjectData extends Model
     }
     public function projectDataLogs()
     {
-        return  $this->hasMany(ProjectDataLog::class);
+        return  $this->hasMany(ProjectDataLog::class)->orderBy('id');
     }
 }

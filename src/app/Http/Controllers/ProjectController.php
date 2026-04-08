@@ -18,6 +18,7 @@ use App\Events\CsvStatusUpdate;
 use App\Services\ProjectDataLogService;
 use App\Services\ProjectDataService;
 use App\Rules\ValidCsvHeaders;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 class ProjectController extends Controller
@@ -211,8 +212,27 @@ class ProjectController extends Controller
                         $projectData->status = 'Imported';
                         $projectData->save();
                         event(new CsvStatusUpdate(project_id: $project->id, project_data_id: $projectData->id, user_id: $user_id));
-                    })->catch(function (Batch $batch, Throwable $e) {
+                    })->catch(function (Batch $batch, Throwable $e) use ($project, $projectData, $user_id) {
                         // Batch job failure detected...
+                        $projectData->status = 'Import failed';
+                        $projectData->save();
+
+                        $projectDataLogService = new ProjectDataLogService();
+                        $projectDataLogService->log([
+                            'project_data_id' => $projectData->id,
+                            'status_message' => 'Import failed',
+                            'job' => 'AddRecordsCsvDataTypeTable',
+                            'is_imported' => 0,
+                        ]);
+
+                        Log::error('CSV import batch failed.', [
+                            'project_id' => $project->id,
+                            'project_data_id' => $projectData->id,
+                            'batch_id' => $batch->id,
+                            'exception' => $e,
+                        ]);
+
+                        event(new CsvStatusUpdate(project_id: $project->id, project_data_id: $projectData->id, user_id: $user_id));
                     })->dispatch();
                 }
 

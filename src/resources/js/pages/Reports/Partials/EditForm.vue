@@ -3,7 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { usePage, useForm, router } from '@inertiajs/vue3'
 import axios from 'axios'
 import DynamicNotification from '@/components/DynamicNotification.vue'
-import { CheckCircle, Info } from 'lucide-vue-next'
+import { CheckCircle, Download, ExternalLink, Info } from 'lucide-vue-next'
 import { useEcho } from '@laravel/echo-vue'
 
 const page = usePage()
@@ -210,6 +210,22 @@ function saveReportWithoutAnalysis() {
             title="View report logs" aria-label="View report logs" @click="openNotification">
             <Info class="size-4" aria-hidden="true" />
           </button>
+          <a
+            :href="`/reports/${report.uuid}/pdf`"
+            class="inline-flex items-center rounded-md p-1 text-slate-600 hover:bg-slate-100 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+            :title="`Download report ${report.title} as PDF`"
+          >
+            <Download class="size-4" aria-hidden="true" />
+          </a>
+          <a
+            :href="`/reports/${report.uuid}`"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center rounded-md p-1 text-orange-700 hover:bg-blue-50 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-indigo-500"
+            :title="`Open public report /reports/${report.uuid}`"
+          >
+            <ExternalLink class="size-4" aria-hidden="true" />
+          </a>
         </div>
         <div class="flex-1 rounded border border-gray-200 bg-white p-4 overflow-auto min-h-[200px]"
           v-html="reportHtml" />
@@ -217,6 +233,7 @@ function saveReportWithoutAnalysis() {
     </div>
 
     <DynamicNotification :show="isNotificationOpen" :title="`${report.title}`"
+      :report-uuid="report.uuid"
       description="Updates from agents will appear here as data is analyzed." :logs="reportLogs" @close="closeNotification" />
   </div>
 </template>

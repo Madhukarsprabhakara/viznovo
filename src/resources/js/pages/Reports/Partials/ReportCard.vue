@@ -80,6 +80,7 @@
   <DynamicNotification
     :show="isNotificationOpen"
     :title="`${report.title}`"
+    :report-uuid="report.uuid"
     description="Processing history for this report"
     :logs="reportLogs"
     @close="isNotificationOpen = false"

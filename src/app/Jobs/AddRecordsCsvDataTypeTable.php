@@ -52,6 +52,7 @@ class AddRecordsCsvDataTypeTable implements ShouldQueue
             'project_data_id' => $this->projectData->id,
             'status_message' => 'Imported',
             'job' => 'AddRecordsCsvDataTypeTable',
+            'is_imported' => 1,
         ];
         $projectDataLogService->log($projectDataLog);
         $this->projectData->projectDataLogs;
