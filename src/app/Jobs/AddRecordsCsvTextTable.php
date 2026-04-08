@@ -52,6 +52,7 @@ class AddRecordsCsvTextTable implements ShouldQueue
             'project_data_id' => $this->projectData->id,
             'status_message' => 'CSV Text Table Populated',
             'job' => 'AddRecordsCsvTextTable',
+            'is_imported' => 0,
         ];
         $projectDataLogService->log($projectDataLog);
         $this->projectData->projectDataLogs;

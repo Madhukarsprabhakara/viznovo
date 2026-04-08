@@ -20,9 +20,9 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
             </div>
             <span class="text-md font-semibold text-slate-900 leading-none">Viznovo</span>
           </Link>
-          <div class="flex items-center gap-4">
+          <!-- <div class="flex items-center gap-4">
             <Link :href="login()" class="text-sm text-slate-700 hover:text-indigo-600">Log in</Link>
-          </div>
+          </div> -->
         </nav>
       </div>
     </div>
@@ -35,7 +35,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
             <!-- Main message (1/4) -->
             <div class="lg:col-span-1">
               <h2 class="text-2xl font-semibold text-slate-700">
-                Open-source, agentic qualitative research and data analysis app that makes research and presentation of research from a variety of sources a child&apos;s play.
+                Open-source, privacy-first, agentic qualitative research and data analysis app that makes research and presentation of research from a variety of sources a child&apos;s play.
               </h2>
             </div>
 
@@ -206,7 +206,7 @@ import AppLogoIcon from '@/components/AppLogoIcon.vue'
                 rel="noopener noreferrer"
                 class="inline-flex items-center justify-center px-6 py-3 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
               >
-                Get in touch
+                Deploy open-source
               </a>
 
               <a

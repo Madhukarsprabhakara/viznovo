@@ -61,6 +61,7 @@ class CreateCsvTextTable implements ShouldQueue
             'project_data_id' => $this->projectData->id,
             'status_message' => 'CSV Text Table Created',
             'job' => 'CreateCsvTextTable',
+            'is_imported' => 0,
         ];
         $projectDataLogService->log($projectDataLog);
         $this->projectData->projectDataLogs;

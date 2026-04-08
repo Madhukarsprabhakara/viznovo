@@ -59,6 +59,7 @@ class CreateCsvDataTypeTable implements ShouldQueue
             'project_data_id' => $projectData->id,
             'status_message' => 'CSV data type table created',
             'job' => 'CreateCsvDataTypeTable',
+            'is_imported' => 0,
         ];
         $projectDataLogService->log($projectDataLog);
         $projectData->projectDataLogs;
