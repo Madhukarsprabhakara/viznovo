@@ -71,7 +71,7 @@ confirm() {
         return
     fi
 
-    printf 'This will remove the local installer stack, database volume, and generated installer env file. Continue? [y/N] '
+    printf 'This will remove the local installer stack, installer volumes, and generated installer env file. Continue? [y/N] '
     read -r reply
 
     if [[ ! "$reply" =~ ^[Yy]$ ]]; then

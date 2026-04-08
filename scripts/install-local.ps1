@@ -78,28 +78,33 @@ function New-RandomHex([int]$ByteCount) {
 }
 
 function Ensure-EnvFile {
+    $appKeyBytes = New-Object byte[] 32
+    $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+
+    try {
+        $random.GetBytes($appKeyBytes)
+    }
+    finally {
+        $random.Dispose()
+    }
+
+    $appKey = 'base64:' + [Convert]::ToBase64String($appKeyBytes)
+
     if (Test-Path $EnvFile) {
+        $content = Get-Content $EnvFile -Raw
+        if ($content -match '(?m)^APP_KEY=$') {
+            $content = [regex]::Replace($content, '(?m)^APP_KEY=$', "APP_KEY=$appKey")
+            Set-Content -Path $EnvFile -Value $content -NoNewline
+        }
+
         return
     }
 
     $content = Get-Content $EnvTemplate -Raw
+    $content = $content.Replace('__APP_KEY__', $appKey)
     $content = $content.Replace('__DB_PASSWORD__', (New-RandomHex 16))
     $content = $content.Replace('__REVERB_APP_SECRET__', (New-RandomHex 16))
     Set-Content -Path $EnvFile -Value $content -NoNewline
-}
-
-function Prepare-HostDirs {
-    $paths = @(
-        'src/storage/app/private',
-        'src/storage/framework/cache',
-        'src/storage/framework/sessions',
-        'src/storage/framework/views',
-        'src/bootstrap/cache'
-    )
-
-    foreach ($path in $paths) {
-        New-Item -ItemType Directory -Force -Path (Join-Path $RootDir $path) | Out-Null
-    }
 }
 
 function Wait-ForDatabase {
@@ -120,31 +125,28 @@ function Invoke-Cli([string]$Command) {
 }
 
 function Invoke-ComposerInstall {
-    Invoke-Cli 'COMPOSER_RUNTIME_ENV=virtualbox composer install --no-interaction --prefer-dist'
+    Invoke-Cli 'php artisan migrate --force'
 }
 
 Ensure-Docker
 Ensure-Compose
 Ensure-EnvFile
-Prepare-HostDirs
 
 $dbPasswordLine = (Get-Content $EnvFile | Where-Object { $_ -like 'DB_PASSWORD=*' } | Select-Object -First 1)
 $Env:IREP_INSTALL_DB_PASSWORD = $dbPasswordLine.Substring('DB_PASSWORD='.Length)
 
-Invoke-Compose @('up', '-d', '--build', 'irep_install_db', 'irep_install_php')
+Invoke-Compose @('build', 'irep_install_php')
+Invoke-Compose @('build', 'irep_install_nginx')
+Invoke-Compose @('up', '-d', 'irep_install_db', 'irep_install_php')
 Wait-ForDatabase
 
 Invoke-ComposerInstall
-Invoke-Cli 'npm ci'
-Invoke-Cli 'php artisan key:generate --force'
-Invoke-Cli 'php artisan migrate --force'
 Invoke-Cli "php artisan db:seed --class='Database\Seeders\AIModelsSeeder' --force"
 Invoke-Cli "php artisan db:seed --class='Database\Seeders\CsvDataTypeSeeder' --force"
 Invoke-Cli 'php artisan storage:link || true'
 Invoke-Cli 'php artisan config:clear && php artisan route:clear && php artisan view:clear'
-Invoke-Cli 'npm run build'
 
-Invoke-Compose @('up', '-d', '--build', 'irep_install_nginx', 'irep_install_reverb', 'irep_install_supervisord')
+Invoke-Compose @('up', '-d', 'irep_install_nginx', 'irep_install_reverb', 'irep_install_supervisord')
 
 Start-Process $AppUrl
 

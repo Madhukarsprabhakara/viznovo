@@ -1,3 +1,13 @@
-# ignore storage private files and other large/generated folders
-/src/storage/app/private/projects
+# ignore generated files and large local data from image builds
+/postgresql/data
+/src/.env
+/src/.env.install
+/src/bootstrap/cache/*.php
+/src/node_modules
+/src/public/build
 /src/storage/app/private
+/src/storage/framework/cache/data
+/src/storage/framework/sessions
+/src/storage/framework/views
+/src/storage/logs
+/src/vendor

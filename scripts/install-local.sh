@@ -64,28 +64,29 @@ ensure_compose() {
 }
 
 ensure_env_file() {
-    if [[ -f "$ENV_FILE" ]]; then
-        return
-    fi
-
+    local app_key
     local db_password
     local reverb_secret
+
+    app_key="base64:$(openssl rand -base64 32 | tr -d '\r\n')"
+
+    if [[ -f "$ENV_FILE" ]]; then
+        if grep -q '^APP_KEY=$' "$ENV_FILE"; then
+            sed -i.bak "s|^APP_KEY=$|APP_KEY=$app_key|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+        fi
+
+        return
+    fi
 
     db_password="$(openssl rand -hex 16)"
     reverb_secret="$(openssl rand -hex 16)"
 
     sed \
-        -e "s/__DB_PASSWORD__/$db_password/g" \
-        -e "s/__REVERB_APP_SECRET__/$reverb_secret/g" \
+        -e "s|__APP_KEY__|$app_key|g" \
+        -e "s|__DB_PASSWORD__|$db_password|g" \
+        -e "s|__REVERB_APP_SECRET__|$reverb_secret|g" \
         "$ENV_TEMPLATE" > "$ENV_FILE"
-}
-
-prepare_host_dirs() {
-    mkdir -p "$ROOT_DIR/src/storage/app/private"
-    mkdir -p "$ROOT_DIR/src/storage/framework/cache"
-    mkdir -p "$ROOT_DIR/src/storage/framework/sessions"
-    mkdir -p "$ROOT_DIR/src/storage/framework/views"
-    mkdir -p "$ROOT_DIR/src/bootstrap/cache"
 }
 
 wait_for_database() {
@@ -108,7 +109,7 @@ run_cli() {
 }
 
 run_composer_install() {
-    run_cli "COMPOSER_RUNTIME_ENV=virtualbox composer install --no-interaction --prefer-dist"
+    run_cli "php artisan migrate --force"
 }
 
 open_browser() {
@@ -120,25 +121,22 @@ main() {
     ensure_docker
     ensure_compose
     ensure_env_file
-    prepare_host_dirs
 
     export IREP_INSTALL_DB_PASSWORD
     IREP_INSTALL_DB_PASSWORD="$(grep '^DB_PASSWORD=' "$ENV_FILE" | cut -d '=' -f 2-)"
 
-    compose up -d --build irep_install_db irep_install_php
+    compose build irep_install_php
+    compose build irep_install_nginx
+    compose up -d irep_install_db irep_install_php
     wait_for_database
 
     run_composer_install
-    run_cli "npm ci"
-    run_cli "php artisan key:generate --force"
-    run_cli "php artisan migrate --force"
     run_cli "php artisan db:seed --class='Database\\Seeders\\AIModelsSeeder' --force"
     run_cli "php artisan db:seed --class='Database\\Seeders\\CsvDataTypeSeeder' --force"
     run_cli "php artisan storage:link || true"
     run_cli "php artisan config:clear && php artisan route:clear && php artisan view:clear"
-    run_cli "npm run build"
 
-    compose up -d --build irep_install_nginx irep_install_reverb irep_install_supervisord
+    compose up -d irep_install_nginx irep_install_reverb irep_install_supervisord
 
     open_browser
 

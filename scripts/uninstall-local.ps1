@@ -35,7 +35,7 @@ function Confirm-Uninstall {
         return
     }
 
-    $reply = Read-Host 'This will remove the local installer stack, database volume, and generated installer env file. Continue? [y/N]'
+    $reply = Read-Host 'This will remove the local installer stack, installer volumes, and generated installer env file. Continue? [y/N]'
     if ($reply -notmatch '^[Yy]$') {
         Write-Host 'Uninstall cancelled.'
         exit 0
