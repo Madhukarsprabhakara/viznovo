@@ -127,10 +127,7 @@ function Wait-ForDatabase {
 }
 
 function Sync-DatabasePassword {
-    $sqlPassword = $Env:IREP_INSTALL_DB_PASSWORD.Replace("'", "''")
-    $psqlCommand = "psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c ""ALTER USER postgres WITH PASSWORD '$sqlPassword';"""
-
-    Invoke-Compose @('exec', '-T', 'irep_install_db', 'sh', '-lc', $psqlCommand) *> $null
+    Invoke-Compose @('exec', '-T', 'irep_install_db', 'sh', '-lc', "psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c \"ALTER USER postgres WITH PASSWORD '$Env:IREP_INSTALL_DB_PASSWORD';\"") *> $null
 }
 
 function Invoke-Cli([string]$Command) {
