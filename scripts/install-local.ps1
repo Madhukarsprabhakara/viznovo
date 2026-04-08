@@ -119,6 +119,10 @@ function Invoke-Cli([string]$Command) {
     Invoke-Compose @('run', '--rm', 'irep_install_cli', $Command)
 }
 
+function Invoke-ComposerInstall {
+    Invoke-Cli 'COMPOSER_RUNTIME_ENV=virtualbox composer install --no-interaction --prefer-dist'
+}
+
 Ensure-Docker
 Ensure-Compose
 Ensure-EnvFile
@@ -130,7 +134,7 @@ $Env:IREP_INSTALL_DB_PASSWORD = $dbPasswordLine.Substring('DB_PASSWORD='.Length)
 Invoke-Compose @('up', '-d', '--build', 'irep_install_db', 'irep_install_php')
 Wait-ForDatabase
 
-Invoke-Cli 'composer install --no-interaction --prefer-dist'
+Invoke-ComposerInstall
 Invoke-Cli 'npm ci'
 Invoke-Cli 'php artisan key:generate --force'
 Invoke-Cli 'php artisan migrate --force'

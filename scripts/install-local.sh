@@ -107,6 +107,10 @@ run_cli() {
     compose run --rm irep_install_cli "$1"
 }
 
+run_composer_install() {
+    run_cli "COMPOSER_RUNTIME_ENV=virtualbox composer install --no-interaction --prefer-dist"
+}
+
 open_browser() {
     open "$APP_URL"
 }
@@ -124,7 +128,7 @@ main() {
     compose up -d --build irep_install_db irep_install_php
     wait_for_database
 
-    run_cli "composer install --no-interaction --prefer-dist"
+    run_composer_install
     run_cli "npm ci"
     run_cli "php artisan key:generate --force"
     run_cli "php artisan migrate --force"
