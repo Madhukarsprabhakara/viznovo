@@ -1,6 +1,6 @@
-# irep Local Installer
+# Viznovo open-source installation instructions
 
-This repository now includes a separate local installer stack for open-source users. It does not modify or depend on `docker-compose-dev.yml`.
+This repository now includes a separate local installer stack for open-source users. 
 
 ## Bootstrap install without Git
 
@@ -93,14 +93,14 @@ These commands remove the installer stack from an existing checkout but leave th
 3. Add your API keys on the API keys page.
 4. Create a project and start uploading CSVs, PDFs, or website URLs.
 
-## Notes
+<!-- ## Notes
 
 - The installer uses `src/.env.install` and leaves your existing `src/.env` alone.
 - The installer stack is packaged for runtime use and is not intended to replace the live-edit development workflow in `docker-compose-dev.yml`.
 - Local installer mode bypasses email verification so first-time users can sign up immediately.
 - The existing development stack remains unchanged.
 - The bootstrap scripts default to the GitHub ZIP archive for `Madhukarsprabhakara/viznovo` on the `main` branch. If you change the default branch later, update the bootstrap URLs.
-- The uninstall scripts only target the install stack defined in `docker-compose.install.yml`; they do not remove or alter your existing development stack.
+- The uninstall scripts only target the install stack defined in `docker-compose.install.yml`; they do not remove or alter your existing development stack. -->
 
 # O'Saasy License Agreement
 
