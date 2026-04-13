@@ -101,16 +101,35 @@ class CreateDashboardJ implements ShouldQueue
                     provider: [
                         'openai' => 'gpt-5.4',
                         'gemini' => 'gemini-3.1-pro-preview',
+                        'ollama' => 'gemma4:e4b',
                     ],
                     timeout: 600,
                 );
-        } else {
+        } 
+        if ($this->modelKey == 'gemini-3-pro') {
             $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating report.');
             event(new ReportStatusUpdate(reportId: $this->reportId));
             $response = (new CreateDashboard)->forUser($user)
                 ->prompt(
                     'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
                     provider: [
+                        'gemini' => 'gemini-3.1-pro-preview',
+                        'openai' => 'gpt-5.4',
+                        'ollama' => 'gemma4:e4b',
+
+                    ],
+                    timeout: 600,
+                );
+        }
+        if ($this->modelKey == 'gemma4:e4b') 
+        {
+            $reportLogService->storeReportLogs($this->reportId, 'CreateDashboard', 'Started creating report.');
+            event(new ReportStatusUpdate(reportId: $this->reportId));
+            $response = (new CreateDashboard)->forUser($user)
+                ->prompt(
+                    'Here are the instructions...\n\n' . $this->prompt . ' qualitative data and the insights:' . json_encode($data_for_prompt_design),
+                    provider: [
+                        'ollama' => 'gemma4:e4b',
                         'gemini' => 'gemini-3.1-pro-preview',
                         'openai' => 'gpt-5.4',
 

@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Ai\Agents\DiscoverCSVColumnDataType;
 use App\Events\CsvStatusUpdate;
 use App\Services\ProjectDataLogService;
+
 class IdentifyCsvColumnDataTypes implements ShouldQueue
 {
     use Batchable, Queueable;
@@ -23,10 +24,12 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
      * Create a new job instance.
      */
     protected $projectData;
+    protected ?string $modelKey;
 
-    public function __construct($projectData)
+    public function __construct($projectData, ?string $modelKey = null)
     {
         $this->projectData = $projectData;
+        $this->modelKey = $modelKey;
     }
 
     /**
@@ -52,7 +55,7 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
         //log the creation of csv text table
         $projectDataLogService = new ProjectDataLogService();
 
-        $projectDataLog= [
+        $projectDataLog = [
             'project_data_id' => $this->projectData->id,
             'status_message' => 'Identifying CSV column data types',
             'job' => 'IdentifyCsvColumnDataTypes',
@@ -60,24 +63,53 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
         $projectDataLogService->log($projectDataLog);
         $this->projectData->projectDataLogs;
         // event(new CsvStatusUpdate(projectData: $this->projectData, project_data_id: $this->projectData->id));
-    
 
-        $discovery = (new DiscoverCSVColumnDataType)->forUser($user)
-            ->prompt(
-                'Here are sample 20 records from the CSV table:\n\n' . $recordsString,
-                provider: [
-                    'openai' => 'gpt-5.4',
-                    'gemini' => 'gemini-3-pro-preview',
-                ],
-                timeout: 600,
-            );
-       
+        if ($this->modelKey == 'gpt-5') {
+            $discovery = (new DiscoverCSVColumnDataType)->forUser($user)
+                ->prompt(
+                    'Here are sample 20 records from the CSV table:\n\n' . $recordsString,
+                    provider: [
+                        'openai' => 'gpt-5.4',
+                        'gemini' => 'gemini-3-pro-preview',
+                        'ollama' => 'gemma4:e4b',
+
+                    ],
+                    timeout: 600,
+                );
+        }
+        if ($this->modelKey == 'gemini-3-pro') {
+            $discovery = (new DiscoverCSVColumnDataType)->forUser($user)
+                ->prompt(
+                    'Here are sample 20 records from the CSV table:\n\n' . $recordsString,
+                    provider: [
+                        'gemini' => 'gemini-3-pro-preview',
+                        'openai' => 'gpt-5.4',
+                        'ollama' => 'gemma4:e4b',
+                    ],
+                    timeout: 600,
+                );
+        }
+        if ($this->modelKey == 'gemma4:e4b') {
+            $discovery = (new DiscoverCSVColumnDataType)->forUser($user)
+                ->prompt(
+                    'Here are sample 20 records from the CSV table:\n\n' . $recordsString,
+                    provider: [
+                        'ollama' => 'gemma4:e4b',
+                        'openai' => 'gpt-5.4',
+                        'gemini' => 'gemini-3-pro-preview',
+                        
+                    ],
+                    timeout: 600,
+                );
+        }
+
+
         $rawPromptDd = (string) $discovery;
-        
+
         [$promptDecoded, $promptDecodeError] = $jsonDataService->decodeAiJson($rawPromptDd);
         $columnDataTypes = is_array($promptDecoded) ? ($promptDecoded['column_data_types'] ?? null) : null;
-        
-        
+
+
         //save the openai/gemini response in an intermediate table
         $this->projectData->json_from_ai = json_encode($rawPromptDd);
         $this->projectData->json_from_ai_string = json_encode($columnDataTypes);
@@ -87,7 +119,7 @@ class IdentifyCsvColumnDataTypes implements ShouldQueue
         $projectDataCsvService = new ProjectDataCsvService();
         $projectDataCsvService->storeCsvColumns($this->projectData, $columnDataTypes, 'dt_table', (int) $this->projectData->user_id);
 
-        $projectDataLog= [
+        $projectDataLog = [
             'project_data_id' => $this->projectData->id,
             'status_message' => 'CSV column data types identified',
             'job' => 'IdentifyCsvColumnDataTypes',

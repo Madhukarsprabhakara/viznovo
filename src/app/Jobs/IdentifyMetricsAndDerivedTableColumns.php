@@ -57,15 +57,45 @@ class IdentifyMetricsAndDerivedTableColumns implements ShouldQueue
         $derivedTableService = new DerivedTableService();
         $reportLogService->storeReportLogs($this->reportId, 'IdentifyMetricsAndDerivedTableColumns', 'Creating additional columns and tables as needed to analyze the data.');
         event(new ReportStatusUpdate(reportId: $this->reportId));
-        $intermediate_tables = (new CompleteDataSetCreation)->forUser($this->user)
+
+        if ($this->modelKey == 'gpt-5') { 
+            $intermediate_tables = (new CompleteDataSetCreation)->forUser($this->user)
             ->prompt(
                 'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData . '\n\n',
                 provider: [
                     'openai' => 'gpt-5.4',
                     'gemini' => 'gemini-3.1-pro-preview',
+                    'ollama' => 'gemma4:e4b',
                 ],
                 timeout: 600,
             );
+        }
+        if ($this->modelKey == 'gemini-3-pro') { 
+            $intermediate_tables = (new CompleteDataSetCreation)->forUser($this->user)
+            ->prompt(
+                'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData . '\n\n',
+                provider: [
+                    'gemini' => 'gemini-3.1-pro-preview',
+                    'openai' => 'gpt-5.4',
+                    'ollama' => 'gemma4:e4b',
+                ],
+                timeout: 600,
+            );
+        }
+        if ($this->modelKey == 'gemma4:e4b') { 
+           $intermediate_tables = (new CompleteDataSetCreation)->forUser($this->user)
+            ->prompt(
+                'Here is the data analysis plan...\n\n' . $this->analysisPlanString . '\n\n Here is the sample data and the postgres table schema from the sources...' .  $this->jsonMetricData . '\n\n',
+                provider: [
+                    'ollama' => 'gemma4:e4b',
+                    'gemini' => 'gemini-3.1-pro-preview',
+                    'openai' => 'gpt-5.4',
+                    
+                ],
+                timeout: 600,
+            ); 
+        }
+        
         $rawResponseText = (string) $intermediate_tables;
 
         [$decoded, $decodeError] = $jsonDataService->decodeAiJson($rawResponseText);

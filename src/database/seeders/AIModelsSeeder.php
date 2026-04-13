@@ -35,13 +35,30 @@ class AIModelsSeeder extends Seeder
             ['key' => 'gemini-3-pro'],
             [
                 'name' => 'Gemini 3',
-                'description' => '"Google Gemini 3 Pro"',
+                'description' => 'Google Gemini 3 Pro',
                 'from_company' => 'Google',
                 'key' => 'gemini-3-pro',
                 'context_window' => '1M Tokens',
                 'is_admin_only' => false,
                 'is_paid' => true,
                 'sort_order' => 2,
+                'is_active' => true,
+                'is_default' => false,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),
+            ]
+        );
+        AIModel::updateOrInsert(
+            ['key' => 'gemma4:e4b'],
+            [
+                'name' => 'Gemma 4',
+                'description' => 'Google Gemma 4 e4b',
+                'from_company' => 'Google',
+                'key' => 'gemma4:e4b',
+                'context_window' => '128k Tokens',
+                'is_admin_only' => false,
+                'is_paid' => true,
+                'sort_order' => 3,
                 'is_active' => true,
                 'is_default' => false,
                 'created_at' => Carbon::now(),

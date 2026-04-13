@@ -997,7 +997,7 @@ HTML;
                 'model_key' => 'required|string',
                 'report_id' => 'nullable|integer|exists:reports,id',
             ]);
-
+            
             $userId = Auth::id();
 
             $report = null;

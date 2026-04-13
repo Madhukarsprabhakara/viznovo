@@ -65,17 +65,32 @@ class DerivedColumnChunkProcessing implements ShouldQueue
                     provider: [
                         'openai' => 'gpt-5.4',
                         'gemini' => 'gemini-3.1-pro-preview',
+                        'ollama' => 'gemma4:e4b',
                     ],
                     timeout: 600,
                 );
-        } else {
+        }
+        if ($this->modelKey == 'gemini-3-pro') {
             $response = (new DerivedColumnChunkProcessor)->forUser($user)
                 ->prompt(
                     'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk with chunk details:' . json_encode($this->chunk['records']) . '\n\n' . $previousChunkString,
                     provider: [
                         'gemini' => 'gemini-3.1-pro-preview',
                         'openai' => 'gpt-5.4',
+                        'ollama' => 'gemma4:e4b',
 
+                    ],
+                    timeout: 600,
+                );
+        }
+        if ($this->modelKey == 'gemma4:e4b') {
+            $response = (new DerivedColumnChunkProcessor)->forUser($user)
+                ->prompt(
+                    'Here are the instructions...\n\n' . $this->chunk['prompt'] . ' here are the 20 records in the chunk with chunk details:' . json_encode($this->chunk['records']) . '\n\n' . $previousChunkString,
+                    provider: [
+                        'ollama' => 'gemma4:e4b',
+                        'openai' => 'gpt-5.4',
+                        'gemini' => 'gemini-3.1-pro-preview',
                     ],
                     timeout: 600,
                 );
@@ -99,7 +114,7 @@ class DerivedColumnChunkProcessing implements ShouldQueue
 
         $updated = $derivedTableService->storeDerivedData($decoded, $this->schemaName, $this->tableName, $this->chunk);
 
-    
+
         Log::info('Derived column chunk processed.', [
             'updated_rows' => $updated,
             'decoded' => $decoded,
